@@ -825,10 +825,7 @@ function SpaceScene({
       <Earth />
       <ThreeMoons />
       <TexturedGround />
-      <gridHelper
-        args={[300, 100, '#075985', '#101c30']}
-        position={[0, 0, 0]}
-      />
+     
 
       <PlayerAvatar
         isCustomizing={isCustomizing}
