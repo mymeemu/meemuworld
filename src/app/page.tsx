@@ -7,8 +7,7 @@ import {
   OrbitControls,
   useTexture,
   Sparkles,
-  Billboard,
-} from '@react-three/drei';
+  } from '@react-three/drei';
 
 import * as THREE from 'three';
 
