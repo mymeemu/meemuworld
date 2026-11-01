@@ -11,29 +11,27 @@ import {
 
 import * as THREE from 'three';
 
-
+// ============================================
+// 1. SOL CINEMATOGRÁFICO (SHADER ORIGINAL + BILLBOARD)
+// ============================================
 
 function CinematicSun() {
+  const groupRef = useRef<THREE.Group>(null!);
   const flareRef = useRef<THREE.ShaderMaterial>(null!);
 
-  // Orientação fixa no universo
-  const flareQuaternion = new THREE.Quaternion().setFromUnitVectors(
-    new THREE.Vector3(0, 0, 1),
-    new THREE.Vector3(-120, -40, 160).normalize()
-  );
-
+  // Faz o plano do sol acompanhar e olhar sempre para a câmara, 
+  // mantendo o efeito perfeito independentemente de onde o jogador olhe.
   useFrame((state) => {
+    if (groupRef.current) {
+      groupRef.current.quaternion.copy(state.camera.quaternion);
+    }
     if (flareRef.current) {
-      flareRef.current.uniforms.uTime.value =
-        state.clock.elapsedTime;
+      flareRef.current.uniforms.uTime.value = state.clock.elapsedTime;
     }
   });
 
   return (
-    <group
-      position={[120, 40, -160]}
-      quaternion={flareQuaternion}
-    >
+    <group ref={groupRef} position={[120, 40, -160]}>
       <mesh>
         <planeGeometry args={[220, 110]} />
 
@@ -52,7 +50,6 @@ function CinematicSun() {
 
             void main() {
               vUv = uv;
-
               gl_Position =
                 projectionMatrix *
                 modelViewMatrix *
@@ -169,7 +166,6 @@ function CinematicSun() {
     </group>
   );
 }
-
 // ============================================
 // 2. ATMOSFERA PLANETÁRIA
 // ============================================
