@@ -606,7 +606,27 @@ function FirstPersonArms() {
 
   const arms = useMemo(() => {
     const model = clone(scene);
+let meshCount = 0;
+let skinnedCount = 0;
+const boneNames: string[] = [];
 
+model.traverse((child) => {
+  if (child instanceof THREE.Mesh) meshCount++;
+
+  if (child instanceof THREE.SkinnedMesh) {
+    skinnedCount++;
+  }
+
+  if (child instanceof THREE.Bone) {
+    boneNames.push(child.name);
+  }
+});
+
+console.log("DIAGNÓSTICO DOS BRAÇOS", {
+  meshCount,
+  skinnedCount,
+  boneNames,
+});
     const bounds = new THREE.Box3().setFromObject(model);
     const center = bounds.getCenter(new THREE.Vector3());
 
