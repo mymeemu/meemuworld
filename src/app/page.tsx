@@ -687,7 +687,6 @@ function SpaceScene({
 
       <CinematicSun />
       <Earth />
-      <Saturn />
       <ThreeMoons />
 
       <mesh
