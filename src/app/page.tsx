@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useState, useRef } from 'react';
@@ -7,14 +6,13 @@ import {
   OrbitControls,
   useTexture,
   Sparkles,
-  } from '@react-three/drei';
+} from '@react-three/drei';
 
 import * as THREE from 'three';
 
 // ============================================
-// 1. SOL CINEMATOGRÁFICO (SHADER ORIGINAL SEM BILLBOARD)
+// 1. SOL CINEMATOGRÁFICO
 // ============================================
-
 
 function CinematicSun() {
   const flareRef = useRef<THREE.ShaderMaterial>(null!);
@@ -99,7 +97,6 @@ function CinematicSun() {
               float pulse =
                 0.97 + sin(uTime * 0.65) * 0.03;
 
-              // Irregularidade orgânica da explosão
               float distortion =
                 sin(angle * 5.0 + 0.8) * 0.045 +
                 sin(angle * 9.0 - 1.4) * 0.025 +
@@ -107,7 +104,6 @@ function CinematicSun() {
 
               float radius = r + distortion;
 
-              // Raios principais: diferentes direções e comprimentos
               float rays = 0.0;
 
               rays += ray(angle, 0.18, 0.018, radius, 0.85) * 1.8;
@@ -119,7 +115,6 @@ function CinematicSun() {
               rays += ray(angle, 4.62, 0.019, radius, 0.88) * 1.8;
               rays += ray(angle, 5.35, 0.030, radius, 0.52) * 1.3;
 
-              // Raios secundários mais delicados
               float secondary = 0.0;
 
               secondary += ray(angle, 0.58, 0.010, radius, 0.38);
@@ -131,10 +126,8 @@ function CinematicSun() {
               secondary += ray(angle, 5.02, 0.009, radius, 0.42);
               secondary += ray(angle, 5.78, 0.011, radius, 0.36);
 
-              // Núcleo compacto e extremamente luminoso
               float core = exp(-r * r * 420.0);
 
-              // Energia difusa da explosão, com contorno irregular
               float explosionEdge =
                 0.42 + distortion * 1.5;
 
@@ -146,7 +139,6 @@ function CinematicSun() {
                   r
                 ));
 
-              // Filamentos luminosos próximos ao centro
               float filaments =
                 exp(-r * 7.0) *
                 (
@@ -163,7 +155,6 @@ function CinematicSun() {
 
               intensity *= pulse;
 
-              // Gradiente branco, prata e azul-gelo
               vec3 blue = vec3(0.22, 0.42, 0.85);
               vec3 silver = vec3(0.72, 0.84, 1.0);
               vec3 white = vec3(1.0, 1.0, 1.0);
@@ -212,7 +203,6 @@ function Atmosphere({
 }) {
   return (
     <mesh scale={radius}>
-
       <sphereGeometry args={[1, 40, 40]} />
 
       <shaderMaterial
@@ -221,13 +211,11 @@ function Atmosphere({
         blending={THREE.AdditiveBlending}
         side={THREE.BackSide}
         toneMapped={false}
-
         uniforms={{
           uColor: {
             value: new THREE.Color(color),
           },
         }}
-
         vertexShader={`
           varying vec3 vNormal;
           varying vec3 vViewPosition;
@@ -243,7 +231,6 @@ function Atmosphere({
               projectionMatrix * mvPosition;
           }
         `}
-
         fragmentShader={`
           uniform vec3 uColor;
 
@@ -267,7 +254,6 @@ function Atmosphere({
           }
         `}
       />
-
     </mesh>
   );
 }
@@ -282,7 +268,6 @@ function Earth() {
       position={[-85, 38, -230]}
       rotation={[0.2, 0.5, -0.1]}
     >
-      {/* Atmosfera avermelhada */}
       <mesh>
         <sphereGeometry args={[25.2, 64, 64]} />
         <meshBasicMaterial
@@ -295,7 +280,6 @@ function Earth() {
         />
       </mesh>
 
-      {/* Planeta alienígena */}
       <mesh>
         <sphereGeometry args={[24, 96, 96]} />
 
@@ -362,7 +346,6 @@ function Earth() {
             void main() {
               vec3 p = normalize(vPosition);
 
-              // Relevo rochoso
               float terrain = fbm(p * 13.0);
               float detail = fbm(p * 42.0);
 
@@ -384,7 +367,6 @@ function Earth() {
                 smoothstep(0.68, 0.86, rock)
               );
 
-              // Nuvens densas e irregulares
               float clouds = fbm(p * 8.0 + vec3(2.0, 4.0, 1.0));
               clouds += fbm(p * 17.0) * 0.25;
 
@@ -402,7 +384,6 @@ function Earth() {
                 cloudMask * 0.78
               );
 
-              // Iluminação espacial
               vec3 normal = normalize(vNormal);
               vec3 lightDir = normalize(vec3(-0.4, 0.5, 1.0));
 
@@ -411,7 +392,6 @@ function Earth() {
               float ambient = 0.10;
               float lighting = ambient + light * 0.95;
 
-              // Brilho atmosférico nas bordas
               float rim = 1.0 - max(
                 dot(normal, vec3(0.0, 0.0, 1.0)),
                 0.0
@@ -459,13 +439,10 @@ function Saturn() {
       position={[65, -8, -190]}
       rotation={[0.3, 0.2, -0.15]}
     >
-
       <Atmosphere
         radius={1.12}
         color="#ffb86b"
       />
-
-      {/* Corpo */}
 
       <mesh ref={planetRef}>
         <sphereGeometry args={[19, 40, 40]} />
@@ -476,8 +453,6 @@ function Saturn() {
           metalness={0.05}
         />
       </mesh>
-
-      {/* Anéis */}
 
       <mesh
         ref={ringRef}
@@ -496,13 +471,94 @@ function Saturn() {
           depthWrite={false}
         />
       </mesh>
-
     </group>
   );
 }
 
 // ============================================
-// 5. FUNDO ESPACIAL
+// 5. LUAS LUMINESCENTES CINEMATOGRÁFICAS (NO TOPO DO CÉU)
+// ============================================
+
+function CelestialLuminousMoon({
+  position,
+  scale = 1,
+}: {
+  position: [number, number, number];
+  scale?: number;
+}) {
+  return (
+    <group position={position} scale={scale}>
+      {/* Halo de luz difusa/holofote estelar suave ao redor */}
+      <mesh>
+        <planeGeometry args={[26, 26]} />
+        <shaderMaterial
+          transparent
+          depthWrite={false}
+          blending={THREE.AdditiveBlending}
+          toneMapped={false}
+          vertexShader={`
+            varying vec2 vUv;
+            void main() {
+              vUv = uv;
+              gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+            }
+          `}
+          fragmentShader={`
+            varying vec2 vUv;
+            void main() {
+              float d = length(vUv - vec2(0.5));
+              float glow = exp(-d * 6.5);
+              vec3 c = mix(vec3(0.1, 0.85, 1.0), vec3(0.8, 0.98, 1.0), glow);
+              gl_FragColor = vec4(c * glow * 1.2, glow * 0.85);
+            }
+          `}
+        />
+      </mesh>
+
+      {/* Núcleo brilhante da Lua com atmosfera fina */}
+      <mesh>
+        <sphereGeometry args={[3.2, 48, 48]} />
+        <meshBasicMaterial
+          color="#e0f7fc"
+          toneMapped={false}
+        />
+      </mesh>
+      
+      <Atmosphere radius={1.12} color="#00e5ff" />
+    </group>
+  );
+}
+
+function ThreeMoons() {
+  return (
+    // Conjunto centralizado no alto e distante do avatar
+    <group position={[0, 82, -270]}>
+
+      {/* Lua central superior */}
+      <CelestialLuminousMoon
+        position={[0, 15, 0]}
+        scale={1.2}
+      />
+
+      {/* Lua inferior esquerda */}
+      <CelestialLuminousMoon
+        position={[-24, 0, 0]}
+        scale={0.9}
+      />
+
+      {/* Lua inferior direita */}
+      <CelestialLuminousMoon
+        position={[24, 0, 0]}
+        scale={0.9}
+      />
+
+    </group>
+  );
+}
+
+
+// ============================================
+// 6. FUNDO ESPACIAL
 // ============================================
 
 function MilkyWayBackground() {
@@ -514,7 +570,6 @@ function MilkyWayBackground() {
 
   return (
     <mesh>
-
       <sphereGeometry args={[500, 32, 32]} />
 
       <meshBasicMaterial
@@ -522,13 +577,12 @@ function MilkyWayBackground() {
         side={THREE.BackSide}
         toneMapped={false}
       />
-
     </mesh>
   );
 }
 
 // ============================================
-// 6. AVATAR
+// 7. AVATAR
 // ============================================
 
 function PlayerAvatar({
@@ -540,7 +594,6 @@ function PlayerAvatar({
 
   useFrame((state, delta) => {
     if (avatarRef.current) {
-
       if (isCustomizing) {
         avatarRef.current.rotation.y += delta * 0.3;
       } else {
@@ -560,11 +613,7 @@ function PlayerAvatar({
 
   return (
     <group ref={avatarRef} position={[0, 0, 0]}>
-
-      {/* Corpo */}
-
       <mesh position={[0, 0.85, 0]}>
-
         <capsuleGeometry args={[0.4, 1.1, 4, 16]} />
 
         <meshStandardMaterial
@@ -572,13 +621,9 @@ function PlayerAvatar({
           roughness={0.3}
           metalness={0.65}
         />
-
       </mesh>
 
-      {/* Capacete */}
-
       <mesh position={[0, 1.65, 0.08]}>
-
         <sphereGeometry args={[0.28, 24, 24]} />
 
         <meshStandardMaterial
@@ -586,13 +631,9 @@ function PlayerAvatar({
           roughness={0.15}
           metalness={0.9}
         />
-
       </mesh>
 
-      {/* Visor */}
-
       <mesh position={[0, 1.67, 0.29]}>
-
         <sphereGeometry
           args={[0.17, 24, 24, 0, Math.PI * 2, 0, Math.PI / 2]}
         />
@@ -603,92 +644,14 @@ function PlayerAvatar({
           opacity={0.85}
           toneMapped={false}
         />
-
       </mesh>
-
     </group>
   );
 }
 
 // ============================================
-// 7. CENÁRIO COMPLETO
+// 8. CENÁRIO COMPLETO
 // ============================================
-
-function CyanMoon({
-  position,
-}: {
-  position: [number, number, number];
-}) {
-  return (
-    <group position={position}>
-      {/* Halo externo difuso */}
-      <mesh>
-        <sphereGeometry args={[11, 48, 48]} />
-        <meshBasicMaterial
-          color="#00dfff"
-          transparent
-          opacity={0.035}
-          blending={THREE.AdditiveBlending}
-          depthWrite={false}
-          side={THREE.DoubleSide}
-          toneMapped={false}
-        />
-      </mesh>
-
-      {/* Aura intermediária */}
-      <mesh>
-        <sphereGeometry args={[8, 48, 48]} />
-        <meshBasicMaterial
-          color="#16eaff"
-          transparent
-          opacity={0.075}
-          blending={THREE.AdditiveBlending}
-          depthWrite={false}
-          side={THREE.DoubleSide}
-          toneMapped={false}
-        />
-      </mesh>
-
-      {/* Brilho próximo à superfície */}
-      <mesh>
-        <sphereGeometry args={[6.2, 48, 48]} />
-        <meshBasicMaterial
-          color="#42efff"
-          transparent
-          opacity={0.16}
-          blending={THREE.AdditiveBlending}
-          depthWrite={false}
-          side={THREE.DoubleSide}
-          toneMapped={false}
-        />
-      </mesh>
-
-      {/* Corpo luminoso da lua */}
-      <mesh>
-        <sphereGeometry args={[5, 64, 64]} />
-        <meshBasicMaterial
-          color="#48ddec"
-          toneMapped={false}
-        />
-      </mesh>
-    </group>
-  );
-}
-
-function ThreeMoons() {
-  return (
-    <group position={[0, 58, -185]}>
-      {/* Lua superior */}
-      <CyanMoon position={[0, 15, 0]} />
-
-      {/* Lua inferior esquerda */}
-      <CyanMoon position={[-23, 0, 0]} />
-
-      {/* Lua inferior direita */}
-      <CyanMoon position={[23, 0, 0]} />
-    </group>
-  );
-}
 
 function SpaceScene({
   isCustomizing,
@@ -697,9 +660,6 @@ function SpaceScene({
 }) {
   return (
     <>
-
-      {/* Iluminação solar */}
-
       <directionalLight
         position={[120, 40, -160]}
         intensity={2.8}
@@ -715,8 +675,6 @@ function SpaceScene({
         args={['#8acbff', '#080b19', 0.65]}
       />
 
-      {/* Universo */}
-
       <MilkyWayBackground />
 
       <Sparkles
@@ -727,19 +685,15 @@ function SpaceScene({
         color="#b9ddff"
       />
 
-      {/* Corpos celestes */}
-
       <CinematicSun />
       <Earth />
       <Saturn />
       <ThreeMoons />
-      {/* Piso */}
 
       <mesh
         rotation={[-Math.PI / 2, 0, 0]}
         position={[0, -0.05, 0]}
       >
-
         <planeGeometry args={[300, 300]} />
 
         <meshStandardMaterial
@@ -747,7 +701,6 @@ function SpaceScene({
           roughness={0.95}
           metalness={0.1}
         />
-
       </mesh>
 
       <gridHelper
@@ -755,13 +708,9 @@ function SpaceScene({
         position={[0, 0, 0]}
       />
 
-      {/* Avatar */}
-
       <PlayerAvatar
         isCustomizing={isCustomizing}
       />
-
-      {/* Câmera */}
 
       <OrbitControls
         enableDamping
@@ -773,13 +722,12 @@ function SpaceScene({
         maxPolarAngle={Math.PI / 2}
         target={[0, 1, 0]}
       />
-
     </>
   );
 }
 
 // ============================================
-// 8. PÁGINA PRINCIPAL
+// 9. PÁGINA PRINCIPAL
 // ============================================
 
 export default function GamePage() {
@@ -795,9 +743,6 @@ export default function GamePage() {
         background: '#010104',
       }}
     >
-
-      {/* HUD */}
-
       <div
         style={{
           position: 'absolute',
@@ -810,7 +755,6 @@ export default function GamePage() {
           flexWrap: 'wrap',
         }}
       >
-
         <button
           onClick={() => setIsCustomizing(!isCustomizing)}
           style={{
@@ -840,10 +784,7 @@ export default function GamePage() {
         >
           MEEMULAND // {isCustomizing ? 'ARMARIA' : 'EXPLORAÇÃO'}
         </span>
-
       </div>
-
-      {/* RENDERIZAÇÃO 3D */}
 
       <Canvas
         shadows={false}
@@ -863,13 +804,10 @@ export default function GamePage() {
           background: '#010104',
         }}
       >
-
         <SpaceScene
           isCustomizing={isCustomizing}
         />
-
       </Canvas>
-
     </main>
   );
 }
