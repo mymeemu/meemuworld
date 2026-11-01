@@ -780,6 +780,91 @@ function TexturedGround() {
     </mesh>
   );
 }
+
+function AlienRocks() {
+  const rockMaterial = (
+    <meshStandardMaterial
+      color="#343044"
+      roughness={0.88}
+      metalness={0.18}
+    />
+  );
+
+  const crystalMaterial = (
+    <meshStandardMaterial
+      color="#54d9ed"
+      emissive="#087dba"
+      emissiveIntensity={1.5}
+      roughness={0.22}
+      metalness={0.35}
+    />
+  );
+
+  return (
+    <group>
+      
+      {/* AGRUPAMENTO 1 */}
+      <group position={[-16, 0, -13]}>
+        <mesh position={[0, 0.65, 0]} scale={[1.5, 0.8, 1.2]}>
+          <dodecahedronGeometry args={[1, 0]} />
+          {rockMaterial}
+        </mesh>
+
+        <mesh position={[1.4, 0.35, 0.5]} scale={[0.8, 0.5, 0.7]}>
+          <icosahedronGeometry args={[1, 0]} />
+          {rockMaterial}
+        </mesh>
+
+        <mesh position={[-0.5, 1.1, 0.2]} rotation={[0, 0, -0.15]}>
+          <octahedronGeometry args={[0.9, 0]} />
+          {crystalMaterial}
+        </mesh>
+
+        <mesh position={[0.8, 0.75, -0.7]} scale={0.55}>
+          <octahedronGeometry args={[1, 0]} />
+          {crystalMaterial}
+        </mesh>
+      </group>
+
+      {/* AGRUPAMENTO 2 */}
+      <group position={[19, 0, -17]} rotation={[0, 1.2, 0]}>
+        <mesh position={[0, 0.5, 0]} scale={[1.3, 0.65, 1]}>
+          <dodecahedronGeometry args={[1, 0]} />
+          {rockMaterial}
+        </mesh>
+
+        <mesh position={[-1, 0.35, 0.7]} scale={0.65}>
+          <icosahedronGeometry args={[1, 0]} />
+          {rockMaterial}
+        </mesh>
+
+        <mesh position={[0.3, 1.2, 0.2]} rotation={[0, 0, 0.2]}>
+          <octahedronGeometry args={[1.1, 0]} />
+          {crystalMaterial}
+        </mesh>
+      </group>
+
+      {/* AGRUPAMENTO 3 */}
+      <group position={[-22, 0, 20]} rotation={[0, -0.7, 0]}>
+        <mesh position={[0, 0.55, 0]} scale={[1.2, 0.7, 1.3]}>
+          <dodecahedronGeometry args={[1, 0]} />
+          {rockMaterial}
+        </mesh>
+
+        <mesh position={[1, 0.9, 0]} scale={0.7}>
+          <octahedronGeometry args={[1, 0]} />
+          {crystalMaterial}
+        </mesh>
+
+        <mesh position={[-1, 0.6, -0.5]} scale={0.55}>
+          <octahedronGeometry args={[1, 0]} />
+          {crystalMaterial}
+        </mesh>
+      </group>
+    </group>
+  );
+}
+
 // ============================================
 // 8. CENÁRIO COMPLETO
 // ============================================
