@@ -600,11 +600,7 @@ function FirstPersonArms() {
   const { camera } = useThree();
   const groupRef = useRef<THREE.Group>(null!);
 
-  const elapsed = useRef(0);
-  const lastCameraPosition = useRef(new THREE.Vector3());
-  const hasLastPosition = useRef(false);
-
-  const { scene, animations } = useGLTF(
+  const { scene } = useGLTF(
     '/models/avatar/first_person_arms.glb'
   );
 
@@ -614,7 +610,8 @@ function FirstPersonArms() {
     const bounds = new THREE.Box3().setFromObject(model);
     const center = bounds.getCenter(new THREE.Vector3());
 
-    const scale = 0.015;
+    // Aproxima e amplia o modelo
+    const scale = 0.02;
 
     model.scale.setScalar(scale);
 
@@ -635,52 +632,14 @@ function FirstPersonArms() {
     return model;
   }, [scene]);
 
-  const mixer = useMemo(
-    () => new THREE.AnimationMixer(arms),
-    [arms]
-  );
-
-  useEffect(() => {
-    animations.forEach((clip) => {
-      mixer.clipAction(clip).reset().play();
-    });
-
-    return () => {
-      mixer.stopAllAction();
-    };
-  }, [animations, mixer]);
-
-  useFrame((_, delta) => {
+  useFrame(() => {
     if (!groupRef.current) return;
-
-    elapsed.current += delta;
-
-    mixer.update(delta);
-
-    const distance = hasLastPosition.current
-      ? camera.position.distanceTo(lastCameraPosition.current)
-      : 0;
-
-    lastCameraPosition.current.copy(camera.position);
-    hasLastPosition.current = true;
-
-    const isMoving = distance > 0.0005;
-
-    const speed = isMoving ? 10 : 2;
-    const intensity = isMoving ? 1 : 0.25;
-
-    const sway = Math.sin(elapsed.current * speed);
 
     groupRef.current.position.copy(camera.position);
     groupRef.current.quaternion.copy(camera.quaternion);
 
-    groupRef.current.rotateZ(sway * 0.025 * intensity);
-    groupRef.current.rotateX(Math.cos(elapsed.current * speed) * 0.015 * intensity);
-
-    groupRef.current.translateY(
-      -0.25 + Math.abs(sway) * 0.025 * intensity
-    );
-
+    // Braços mais baixos e próximos da câmera
+    groupRef.current.translateY(-0.42);
     groupRef.current.translateZ(-0.35);
   });
 
