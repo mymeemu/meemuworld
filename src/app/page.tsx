@@ -780,35 +780,6 @@ function PlayerAvatar({
     </group>
   );
 }
-// ============================================
-// 10. ROCHAS 3D — MEEMU WORLD
-// ============================================
-
-function AlienRocks() {
-  const { scene } = useGLTF('/models/rock_moss_set_01_1k.gltf');
-
-  const rock = useMemo(() => scene.clone(true), [scene]);
-
-  const rockPositionY = useMemo(() => {
-    rock.updateMatrixWorld(true);
-
-    const bounds = new THREE.Box3().setFromObject(rock);
-
-    // Alinha a base da rocha ao nível do terreno.
-    return -0.45 - bounds.min.y;
-  }, [rock]);
-
-  return (
-    <group
-      position={[0, rockPositionY, 0]}
-      rotation={[0, 0, 0]}
-    >
-      <primitive object={rock} />
-    </group>
-  );
-}
-
-useGLTF.preload('/models/rock_moss_set_01_1k.gltf');
 
 // ============================================
 // 9. CHÃO PBR — MEEMU WORLD
@@ -863,27 +834,36 @@ function TexturedGround() {
     </mesh>
   );
 }
+
 // ============================================
 // 10. ROCHAS 3D — MEEMU WORLD
 // ============================================
 
 function AlienRocks() {
-  const { scene } = useGLTF('/textures/rocks.meemu.glb');
+  const { scene } = useGLTF('/models/rock_moss_set_01_1k.gltf');
+
+  const rock = useMemo(() => scene.clone(true), [scene]);
+
+  const rockPositionY = useMemo(() => {
+    rock.updateMatrixWorld(true);
+
+    const bounds = new THREE.Box3().setFromObject(rock);
+
+    return -0.45 - bounds.min.y;
+  }, [rock]);
 
   return (
     <group
-      position={[0, 0, 0]}
+      position={[0, rockPositionY, 0]}
       rotation={[0, 0, 0]}
     >
-      <primitive
-        object={scene.clone()}
-        scale={1}
-      />
+      <primitive object={rock} />
     </group>
   );
 }
 
-useGLTF.preload('/textures/rocks.meemu.glb');
+useGLTF.preload('/models/rock_moss_set_01_1k.gltf');
+
       {/* Núcleo sólido interno */}
       <mesh
         position={rockData.center}
@@ -899,16 +879,7 @@ useGLTF.preload('/textures/rocks.meemu.glb');
         />
       </mesh>
 
-      {/* Superfície original escaneada */}
-      <primitive
-        object={rock}
-        scale={1}
-      />
-    </group>
-  );
-}
-
-useGLTF.preload('/textures/rocks.meemu.glb');
+  
 // ============================================
 // 11. CENÁRIO COMPLETO
 // ============================================
