@@ -1041,7 +1041,7 @@ function SpaceScene({
       <MeemuPlanetModel />
       <MeemuGalaxyModel />
       </Suspense>
-      <AlienRingedPlanet />
+      
       <Sparkles
         count={180}
         scale={[450, 280, 550]}
