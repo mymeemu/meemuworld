@@ -860,10 +860,10 @@ function TexturedGround() {
     normalMap,
     roughnessMap,
   ] = useTexture([
-    '/textures/rocks/brown_mud_leaves_01_diff_1k.jpg',
-    '/textures/rocks/brown_mud_leaves_01_ao_1k.jpg',
-    '/textures/rocks/brown_mud_leaves_01_nor_gl_1k.jpg',
-    '/textures/rocks/brown_mud_leaves_01_rough_1k.jpg',
+    '/textures/brown_mud_leaves_01_diff_1k.jpg',
+    '/textures/brown_mud_leaves_01_ao_1k.jpg',
+    '/textures/brown_mud_leaves_01_nor_gl_1k.jpg',
+    '/textures/brown_mud_leaves_01_rough_1k.jpg',
   ]);
 
   const geometry = useMemo(() => {
