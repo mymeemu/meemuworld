@@ -600,7 +600,11 @@ function FirstPersonArms() {
   const { camera } = useThree();
   const groupRef = useRef<THREE.Group>(null!);
 
-  const { scene } = useGLTF(
+  const elapsed = useRef(0);
+  const lastCameraPosition = useRef(new THREE.Vector3());
+  const hasLastPosition = useRef(false);
+
+  const { scene, animations } = useGLTF(
     '/models/avatar/first_person_arms.glb'
   );
 
@@ -614,50 +618,69 @@ function FirstPersonArms() {
 
     model.scale.setScalar(scale);
 
-model.position.set(
-  -center.x * scale,
-  -center.y * scale,
-  -center.z * scale
-);
+    model.position.set(
+      -center.x * scale,
+      -center.y * scale,
+      -center.z * scale
+    );
 
-model.rotation.y = Math.PI;
+    model.rotation.y = Math.PI;
+
     model.traverse((child) => {
       if (child instanceof THREE.Mesh) {
         child.frustumCulled = false;
-        child.renderOrder = 9999;
-
-        const materials = Array.isArray(child.material)
-          ? child.material.map((material) => material.clone())
-          : child.material.clone();
-
-        const materialList = Array.isArray(materials)
-          ? materials
-          : [materials];
-
-        materialList.forEach((material) => {
-          material.visible = true;
-          material.transparent = false;
-          material.opacity = 1;
-          material.depthTest = false;
-          material.depthWrite = false;
-          material.side = THREE.DoubleSide;
-          material.needsUpdate = true;
-        });
-
-        child.material = materials;
       }
     });
 
     return model;
   }, [scene]);
 
-  useFrame(() => {
+  const mixer = useMemo(
+    () => new THREE.AnimationMixer(arms),
+    [arms]
+  );
+
+  useEffect(() => {
+    animations.forEach((clip) => {
+      mixer.clipAction(clip).reset().play();
+    });
+
+    return () => {
+      mixer.stopAllAction();
+    };
+  }, [animations, mixer]);
+
+  useFrame((_, delta) => {
     if (!groupRef.current) return;
+
+    elapsed.current += delta;
+
+    mixer.update(delta);
+
+    const distance = hasLastPosition.current
+      ? camera.position.distanceTo(lastCameraPosition.current)
+      : 0;
+
+    lastCameraPosition.current.copy(camera.position);
+    hasLastPosition.current = true;
+
+    const isMoving = distance > 0.0005;
+
+    const speed = isMoving ? 10 : 2;
+    const intensity = isMoving ? 1 : 0.25;
+
+    const sway = Math.sin(elapsed.current * speed);
 
     groupRef.current.position.copy(camera.position);
     groupRef.current.quaternion.copy(camera.quaternion);
 
-    groupRef.current.translateY(-0.25);
+    groupRef.current.rotateZ(sway * 0.025 * intensity);
+    groupRef.current.rotateX(Math.cos(elapsed.current * speed) * 0.015 * intensity);
+
+    groupRef.current.translateY(
+      -0.25 + Math.abs(sway) * 0.025 * intensity
+    );
+
     groupRef.current.translateZ(-0.35);
   });
 
