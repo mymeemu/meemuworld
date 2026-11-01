@@ -23,6 +23,7 @@ import {
 } from '@react-three/drei';
 
 import * as THREE from 'three';
+import { clone } from 'three/examples/jsm/utils/SkeletonUtils.js';
 // ============================================
 // 1. SOL CINEMATOGRÁFICO
 // ============================================
@@ -603,25 +604,49 @@ function FirstPersonArms() {
     '/models/avatar/first_person_arms.glb'
   );
 
-  const arms = useMemo(
-    () => scene.clone(true),
-    [scene]
-  );
+  const arms = useMemo(() => clone(scene), [scene]);
 
   useEffect(() => {
-    arms.position.set(0, -0.38, -0.72);
-    arms.rotation.set(0, 0, 0);
-    arms.scale.setScalar(0.85);
+    const bounds = new THREE.Box3().setFromObject(arms);
+    const size = bounds.getSize(new THREE.Vector3());
+    const center = bounds.getCenter(new THREE.Vector3());
+
+    const largestDimension = Math.max(
+      size.x,
+      size.y,
+      size.z,
+      0.001
+    );
+
+    const scale = 0.95 / largestDimension;
+
+    arms.scale.setScalar(scale);
+
+    arms.position.set(
+      -center.x * scale,
+      -0.38 - center.y * scale,
+      -0.78 - center.z * scale
+    );
 
     arms.traverse((child) => {
       if (child instanceof THREE.Mesh) {
         child.frustumCulled = false;
-        child.castShadow = true;
-        child.receiveShadow = true;
+        child.renderOrder = 1000;
+
+        const materials = Array.isArray(child.material)
+          ? child.material
+          : [child.material];
+
+        materials.forEach((material) => {
+          material.depthTest = false;
+          material.depthWrite = false;
+          material.needsUpdate = true;
+        });
       }
     });
 
     camera.add(arms);
+    camera.updateMatrixWorld(true);
 
     return () => {
       camera.remove(arms);
