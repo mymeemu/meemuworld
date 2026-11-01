@@ -1,11 +1,12 @@
 'use client';
 
-import React, { useState, useRef } from 'react';
+import React, { Suspense, useMemo, useState, useRef } from 'react';
 import { Canvas, useFrame } from '@react-three/fiber';
 import {
   OrbitControls,
   useTexture,
   Sparkles,
+  useGLTF,
 } from '@react-three/drei';
 
 import * as THREE from 'three';
@@ -648,7 +649,75 @@ function PlayerAvatar({
     </group>
   );
 }
+// ============================================
+// MODELOS 3D GLB — MEEMU WORLD
+// ============================================
 
+function NormalizedGLB({
+  url,
+  position,
+  targetSize,
+  rotation = [0, 0, 0],
+}: {
+  url: string;
+  position: [number, number, number];
+  targetSize: number;
+  rotation?: [number, number, number];
+}) {
+  const { scene } = useGLTF(url);
+
+  const model = useMemo(() => {
+    const clone = scene.clone(true);
+
+    clone.updateMatrixWorld(true);
+
+    const bounds = new THREE.Box3().setFromObject(clone);
+    const size = bounds.getSize(new THREE.Vector3());
+    const center = bounds.getCenter(new THREE.Vector3());
+
+    const largestAxis = Math.max(
+      size.x,
+      size.y,
+      size.z,
+      0.001
+    );
+
+    clone.position.sub(center);
+    clone.scale.setScalar(targetSize / largestAxis);
+
+    return clone;
+  }, [scene, targetSize]);
+
+  return (
+    <group position={position} rotation={rotation}>
+      <primitive object={model} />
+    </group>
+  );
+}
+
+// PLANETA 3D
+function MeemuPlanetModel() {
+  return (
+    <NormalizedGLB
+      url="/models/planet.meemuworld.glb"
+      position={[65, -8, -190]}
+      targetSize={42}
+      rotation={[0.15, 0.35, 0]}
+    />
+  );
+}
+
+// GALÁXIA 3D
+function MeemuGalaxyModel() {
+  return (
+    <NormalizedGLB
+      url="/models/galaxy.glb"
+      position={[0, 35, -430]}
+      targetSize={300}
+      rotation={[0.25, 0, 0]}
+    />
+  );
+}
 // ============================================
 // 8. CENÁRIO COMPLETO
 // ============================================
@@ -676,7 +745,11 @@ function SpaceScene({
       />
 
       <MilkyWayBackground />
-
+      <Suspense fallback={null}>
+      <MeemuPlanetModel />
+      <MeemuGalaxyModel />
+      </Suspense>
+      
       <Sparkles
         count={55}
         scale={250}
