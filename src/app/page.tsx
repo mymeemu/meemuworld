@@ -614,12 +614,13 @@ function FirstPersonArms() {
 
     model.scale.setScalar(scale);
 
-    model.position.set(
-      -center.x * scale,
-      -center.y * scale,
-      -center.z * scale
-    );
+model.position.set(
+  -center.x * scale,
+  -center.y * scale,
+  -center.z * scale
+);
 
+model.rotation.y = Math.PI;
     model.traverse((child) => {
       if (child instanceof THREE.Mesh) {
         child.frustumCulled = false;
