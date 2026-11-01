@@ -266,7 +266,7 @@ function Atmosphere({
 function Earth() {
   return (
     <group
-      position={[-85, 38, -230]}
+      position={[-320, 45, -230]}
       rotation={[0.2, 0.5, -0.1]}
     >
       <mesh>
