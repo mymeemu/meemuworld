@@ -17,13 +17,10 @@ import {
 
 import * as THREE from 'three';
 
-// ============================================
-// 1. SOL CINEMATOGRÁFICO
-// ============================================
 
 function CinematicSun() {
   const sunRef = useRef<THREE.Mesh>(null!);
-  const coronaRef = useRef<THREE.Group>(null!);
+  const plasmaRef = useRef<THREE.Group>(null!);
 
   const [sunTexture] = useTexture(['/8k_sun.jpg']);
 
@@ -31,23 +28,32 @@ function CinematicSun() {
 
   useFrame((state, delta) => {
     if (sunRef.current) {
-      sunRef.current.rotation.y += delta * 0.025;
+      sunRef.current.rotation.y += delta * 0.006;
     }
 
-    if (coronaRef.current) {
-      coronaRef.current.rotation.y += delta * 0.008;
-      coronaRef.current.rotation.z =
-        Math.sin(state.clock.elapsedTime * 0.15) * 0.025;
+    if (plasmaRef.current) {
+      plasmaRef.current.rotation.y += delta * 0.012;
+      plasmaRef.current.rotation.z =
+        Math.sin(state.clock.elapsedTime * 0.2) * 0.04;
     }
   });
 
   return (
     <group position={[120, 40, -160]}>
 
-      {/* Superfície solar */}
+      {/* Luz solar */}
+
+      <pointLight
+        color="#fff0ce"
+        intensity={1800}
+        distance={1000}
+        decay={1.5}
+      />
+
+      {/* Superfície do Sol */}
 
       <mesh ref={sunRef}>
-        <sphereGeometry args={[14, 48, 48]} />
+        <sphereGeometry args={[14, 96, 96]} />
 
         <meshBasicMaterial
           map={sunTexture}
@@ -55,47 +61,47 @@ function CinematicSun() {
         />
       </mesh>
 
-      {/* Corona solar */}
+      {/* Plasma externo */}
 
-      <group ref={coronaRef}>
+      <group ref={plasmaRef}>
 
-        <mesh scale={1.25}>
-          <sphereGeometry args={[14, 40, 40]} />
+        <mesh scale={1.025}>
+          <sphereGeometry args={[14, 64, 64]} />
 
           <meshBasicMaterial
-            color="#fff1c2"
+            color="#fff5dc"
             transparent
-            opacity={0.22}
-            side={THREE.BackSide}
+            opacity={0.28}
             blending={THREE.AdditiveBlending}
+            side={THREE.BackSide}
             depthWrite={false}
             toneMapped={false}
           />
         </mesh>
 
-        <mesh scale={1.55}>
-          <sphereGeometry args={[14, 40, 40]} />
+        <mesh scale={1.12}>
+          <sphereGeometry args={[14, 64, 64]} />
 
           <meshBasicMaterial
-            color="#ff9b42"
+            color="#ffb347"
             transparent
             opacity={0.16}
-            side={THREE.BackSide}
             blending={THREE.AdditiveBlending}
+            side={THREE.BackSide}
             depthWrite={false}
             toneMapped={false}
           />
         </mesh>
 
-        <mesh scale={2}>
-          <sphereGeometry args={[14, 40, 40]} />
+        <mesh scale={1.3}>
+          <sphereGeometry args={[14, 64, 64]} />
 
           <meshBasicMaterial
-            color="#ff5e1a"
+            color="#ff741c"
             transparent
-            opacity={0.07}
-            side={THREE.BackSide}
+            opacity={0.09}
             blending={THREE.AdditiveBlending}
+            side={THREE.BackSide}
             depthWrite={false}
             toneMapped={false}
           />
@@ -103,17 +109,17 @@ function CinematicSun() {
 
       </group>
 
-      {/* Halo externo */}
+      {/* Halo luminoso */}
 
-      <mesh>
-        <sphereGeometry args={[42, 32, 32]} />
+      <mesh scale={1.65}>
+        <sphereGeometry args={[14, 48, 48]} />
 
         <meshBasicMaterial
-          color="#ff7b28"
+          color="#ff9d42"
           transparent
-          opacity={0.035}
-          side={THREE.BackSide}
+          opacity={0.055}
           blending={THREE.AdditiveBlending}
+          side={THREE.BackSide}
           depthWrite={false}
           toneMapped={false}
         />
@@ -199,13 +205,7 @@ function Earth() {
 
   earthTexture.colorSpace = THREE.SRGBColorSpace;
 
-  useFrame((_, delta) => {
-    if (planetRef.current) {
-      planetRef.current.rotation.y += delta * 0.012;
-    }
-  });
-
-  return (
+ return (
     <group
       position={[-50, 30, -120]}
       rotation={[0.2, 0.4, -0.1]}
