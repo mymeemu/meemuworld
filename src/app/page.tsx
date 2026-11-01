@@ -901,19 +901,17 @@ function SpaceScene({
       />
 
       <Suspense fallback={null}>
-        <MilkyWayBackground />
+      <MilkyWayBackground />
 
-        <MeemuPlanetModel />
+{/* <MeemuPlanetModel /> */}
 
-        {/* <MeemuGalaxyModel /> */}
+{/* <MeemuGalaxyModel /> */}
 
-        <TexturedGround />
+<TexturedGround />
 
-        <AlienRocks />
+<AlienRocks />
 
-        {/* <Saturn /> */}
-      </Suspense>
-
+{/* <Saturn /> */}
       <Sparkles
         count={180}
         scale={[450, 280, 550]}
