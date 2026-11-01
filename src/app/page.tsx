@@ -903,12 +903,22 @@ function TexturedGround() {
   );
 }
 // ============================================
-// 10. ROCHAS — MEEMU WORLD
+// 10. ROCHAS 3D — MEEMU WORLD
 // ============================================
 
 function AlienRocks() {
-  return null;
+  const { scene } = useGLTF('/textures/rocks.meemu.glb');
+
+  return (
+    <primitive
+      object={scene.clone()}
+      position={[0, 0, 0]}
+      scale={1}
+    />
+  );
 }
+
+useGLTF.preload('/textures/rocks.meemu.glb');
 
 // ============================================
 // 11. CENÁRIO COMPLETO
