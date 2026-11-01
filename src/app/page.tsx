@@ -5,59 +5,108 @@ import { Canvas, useFrame } from '@react-three/fiber';
 import { OrbitControls, Stars } from '@react-three/drei';
 import * as THREE from 'three';
 
-// Planeta Gigante no Horizontes (Estética Interestellar)
-function GiantPlanet() {
-  const planetRef = useRef<THREE.Mesh>(null!);
+// Sol Cinematográfico com Brilho (Estilo Interestellar)
+function CinematicSun() {
+  const sunRef = useRef<THREE.Mesh>(null!);
 
   useFrame((_, delta) => {
-    if (planetRef.current) {
-      planetRef.current.rotation.y += delta * 0.02;
+    if (sunRef.current) {
+      sunRef.current.rotation.y += delta * 0.05;
     }
   });
 
   return (
-    <group position={[0, 40, -120]}>
-      {/* Corpo do Planeta */}
+    <group position={[120, 60, -180]}>
+      {/* Núcleo do Sol */}
+      <mesh ref={sunRef}>
+        <sphereGeometry args={[12, 32, 32]} />
+        <meshBasicMaterial color="#fffaed" />
+      </mesh>
+      {/* Halo / Atmosfera Solar Brilhante */}
+      <mesh>
+        <sphereGeometry args={[16, 32, 32]} />
+        <meshBasicMaterial color="#f97316" transparent opacity={0.35} side={THREE.BackSide} />
+      </mesh>
+      <mesh>
+        <sphereGeometry args={[22, 32, 32]} />
+        <meshBasicMaterial color="#ea580c" transparent opacity={0.15} side={THREE.BackSide} />
+      </mesh>
+      {/* Luz Direcional Principal do Sol */}
+      <directionalLight position={[0, 0, 0]} intensity={3.5} color="#ffedd5" />
+    </group>
+  );
+}
+
+// Planeta Gigante com Atmosfera e Anéis Elegantes
+function CinematicPlanet() {
+  const planetRef = useRef<THREE.Mesh>(null!);
+  const cloudsRef = useRef<THREE.Mesh>(null!);
+
+  useFrame((_, delta) => {
+    if (planetRef.current) planetRef.current.rotation.y += delta * 0.01;
+    if (cloudsRef.current) cloudsRef.current.rotation.y += delta * 0.015;
+  });
+
+  return (
+    <group position={[-30, 45, -140]} rotation={[0.1, 0, -0.2]}>
+      {/* Corpo do Planeta (Tom Azulado Profundo com brilho de superfície) */}
       <mesh ref={planetRef}>
-        <sphereGeometry args={[35, 64, 64]} />
+        <sphereGeometry args={[40, 64, 64]} />
         <meshStandardMaterial 
-          color="#1e3a8a" 
-          roughness={0.8} 
+          color="#0284c7" 
+          emissive="#0369a1"
+          emissiveIntensity={0.15}
+          roughness={0.6} 
           metalness={0.2}
-          bumpScale={0.05}
         />
       </mesh>
-      {/* Anéis do Planeta (Estilo Saturno / Interestellar) */}
-      <mesh rotation={[Math.PI / 3, 0, 0]}>
-        <ringGeometry args={[45, 70, 64]} />
-        <meshStandardMaterial color="#94a3b8" side={THREE.DoubleSide} transparent opacity={0.6} />
+
+      {/* Camada de Nuvems Atmosféricas */}
+      <mesh ref={cloudsRef}>
+        <sphereGeometry args={[40.5, 64, 64]} />
+        <meshStandardMaterial 
+          color="#ffffff" 
+          transparent 
+          opacity={0.3} 
+          blending={THREE.AdditiveBlending}
+        />
+      </mesh>
+
+      {/* Anéis Planetários Estilo Saturno / Interestellar (Translúcidos e Brilhantes) */}
+      <mesh rotation={[Math.PI / 2.5, 0, 0]}>
+        <ringGeometry args={[52, 85, 64]} />
+        <meshStandardMaterial 
+          color="#7dd3fc" 
+          side={THREE.DoubleSide} 
+          transparent 
+          opacity={0.7}
+          roughness={0.3}
+        />
       </mesh>
     </group>
   );
 }
 
-// Avatar do Jogador com Estilo Sci-Fi
+// Avatar do Jogador
 function PlayerAvatar({ isCustomizing }: { isCustomizing: boolean }) {
   const avatarRef = useRef<THREE.Group>(null!);
 
   useFrame((state) => {
     if (isCustomizing && avatarRef.current) {
-      avatarRef.current.rotation.y = state.clock.getElapsedTime() * 0.5;
+      avatarRef.current.rotation.y = state.clock.getElapsedTime() * 0.4;
     }
   });
 
   return (
     <group ref={avatarRef} position={[0, 0, 0]}>
-      {/* Corpo / Traje Espacial */}
       <mesh position={[0, 1, 0]}>
         <capsuleGeometry args={[0.4, 1.1, 4, 16]} />
         <meshStandardMaterial 
-          color={isCustomizing ? '#00f0ff' : '#cbd5e1'} 
+          color={isCustomizing ? '#38bdf8' : '#cbd5e1'} 
           roughness={0.2} 
           metalness={0.8} 
         />
       </mesh>
-      {/* Capacete com visor reflexivo */}
       <mesh position={[0, 1.7, 0]}>
         <sphereGeometry args={[0.25, 32, 32]} />
         <meshStandardMaterial color="#0f172a" roughness={0.1} metalness={0.9} />
@@ -70,47 +119,47 @@ export default function GamePage() {
   const [isCustomizing, setIsCustomizing] = useState(true);
 
   return (
-    <main style={{ width: '100vw', height: '100vh', position: 'relative', overflow: 'hidden', backgroundColor: '#020208' }}>
-      {/* HUD / Interface Estilo Sci-Fi */}
+    <main style={{ width: '100vw', height: '100vh', position: 'relative', overflow: 'hidden', backgroundColor: '#010104' }}>
+      {/* Interface / HUD */}
       <div style={{ position: 'absolute', top: 20, left: 20, zIndex: 10, display: 'flex', gap: '15px', alignItems: 'center' }}>
         <button
           onClick={() => setIsCustomizing(!isCustomizing)}
           style={{
             padding: '12px 24px',
-            backgroundColor: 'rgba(15, 23, 42, 0.8)',
+            backgroundColor: 'rgba(15, 23, 42, 0.85)',
             color: '#38bdf8',
             border: '1px solid #0284c7',
             borderRadius: '6px',
             cursor: 'pointer',
             fontWeight: 'bold',
             backdropFilter: 'blur(8px)',
-            boxShadow: '0 0 15px rgba(56, 189, 248, 0.3)',
-            transition: 'all 0.3s ease',
+            boxShadow: '0 0 20px rgba(56, 189, 248, 0.4)',
           }}
         >
           {isCustomizing ? '🛡️ Modo Exploração FPS' : '⚙️ Personalizar Traje'}
         </button>
-        <span style={{ color: '#94a3b8', fontSize: '14px', fontFamily: 'monospace' }}>
-          STATUS: {isCustomizing ? 'ESTÚDIO DE ARMARIA' : 'SUPERFÍCIE DO PLANETA'}
+        <span style={{ color: '#94a3b8', fontSize: '13px', fontFamily: 'monospace', letterSpacing: '1px' }}>
+          SISTEMA ESTELAR: {isCustomizing ? 'ARMARIA' : 'SUPERFÍCIE'}
         </span>
       </div>
 
       {/* Canvas 3D */}
       <Canvas camera={{ position: isCustomizing ? [0, 1.5, 4] : [0, 1.7, 0], fov: 75 }}>
-        {/* Iluminação Dramática Estilo Interestellar */}
-        <ambientLight intensity={0.15} />
-        <directionalLight position={[30, 40, 20]} intensity={2.0} color="#ffedd5" />
-        <pointLight position={[-20, 10, -20]} intensity={1.0} color="#38bdf8" />
-        
-        {/* Fundo do Espaço com Estrelas */}
-        <color attach="background" args={['#010104']} />
-        <Stars radius={150} depth={50} count={7000} factor={4} saturation={0.5} fade speed={1} />
+        {/* Iluminação Ambiente Suave para o lado escuro */}
+        <ambientLight intensity={0.3} color="#1e293b" />
 
-        {/* Planeta Gigante ao Fundo */}
-        <GiantPlanet />
+        {/* Fundo Espacial Profundo com Estrelas */}
+        <color attach="background" args={['#010104']} />
+        <Stars radius={180} depth={60} count={9000} factor={4} saturation={0.8} fade speed={0.5} />
+
+        {/* Sol Cinematográfico com Luz Própria */}
+        <CinematicSun />
+
+        {/* Planeta Gigante com Anéis e Atmosfera */}
+        <CinematicPlanet />
         
-        {/* Chão / Terreno Sci-Fi */}
-        <gridHelper args={[200, 100, '#0369a1', '#1e293b']} position={[0, 0, 0]} />
+        {/* Chão / Terreno Estilizado com Grid Tecnológico */}
+        <gridHelper args={[250, 120, '#0284c7', '#0f172a']} position={[0, 0, 0]} />
 
         {/* Personagem */}
         <PlayerAvatar isCustomizing={isCustomizing} />
@@ -119,7 +168,7 @@ export default function GamePage() {
         <OrbitControls 
           enableZoom={true} 
           target={[0, 1, 0]} 
-          maxPolarAngle={Math.PI / 2 + 0.05} // Evita ir abaixo do chão
+          maxPolarAngle={Math.PI / 2 + 0.02} 
         />
       </Canvas>
     </main>
