@@ -780,74 +780,35 @@ function PlayerAvatar({
     </group>
   );
 }
-
 // ============================================
-// 8. MODELOS 3D GLB — MEEMU WORLD
+// 10. ROCHAS 3D — MEEMU WORLD
 // ============================================
 
-function NormalizedGLB({
-  url,
-  position,
-  targetSize,
-  rotation = [0, 0, 0],
-}: {
-  url: string;
-  position: [number, number, number];
-  targetSize: number;
-  rotation?: [number, number, number];
-}) {
-  const { scene } = useGLTF(url);
+function AlienRocks() {
+  const { scene } = useGLTF('/models/rock_moss_set_01_1k.gltf');
 
-  const model = useMemo(() => {
-    const clone = scene.clone(true);
+  const rock = useMemo(() => scene.clone(true), [scene]);
 
-    clone.updateMatrixWorld(true);
+  const rockPositionY = useMemo(() => {
+    rock.updateMatrixWorld(true);
 
-    const bounds = new THREE.Box3().setFromObject(clone);
-    const size = bounds.getSize(new THREE.Vector3());
-    const center = bounds.getCenter(new THREE.Vector3());
+    const bounds = new THREE.Box3().setFromObject(rock);
 
-    const largestAxis = Math.max(
-      size.x,
-      size.y,
-      size.z,
-      0.001
-    );
-
-    clone.position.sub(center);
-    clone.scale.setScalar(targetSize / largestAxis);
-
-    return clone;
-  }, [scene, targetSize]);
+    // Alinha a base da rocha ao nível do terreno.
+    return -0.45 - bounds.min.y;
+  }, [rock]);
 
   return (
-    <group position={position} rotation={rotation}>
-      <primitive object={model} />
+    <group
+      position={[0, rockPositionY, 0]}
+      rotation={[0, 0, 0]}
+    >
+      <primitive object={rock} />
     </group>
   );
 }
 
-function MeemuPlanetModel() {
-  return (
-    <NormalizedGLB
-      url="/models/planet.meemuworld.glb"
-      position={[-420, 100, -280]}
-      targetSize={42}
-      rotation={[0.15, 0.35, 0]}
-    />
-  );
-}
-
-function MeemuGalaxyModel() {
-  return (
-    <NormalizedGLB
-      url="/models/galaxy.glb"
-      position={[-220, 85, -420]}
-      targetSize={300}
-      rotation={[Math.PI / 2, 0, 0]}
-    />
-  );
-}
+useGLTF.preload('/models/rock_moss_set_01_1k.gltf');
 
 // ============================================
 // 9. CHÃO PBR — MEEMU WORLD
