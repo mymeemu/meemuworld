@@ -12,13 +12,14 @@ import {
 import * as THREE from 'three';
 
 
+
 function CinematicSun() {
   const flareRef = useRef<THREE.ShaderMaterial>(null!);
 
-  // Orientação inicial fixa: não acompanha os movimentos da câmera.
+  // Orientação fixa no universo
   const flareQuaternion = new THREE.Quaternion().setFromUnitVectors(
     new THREE.Vector3(0, 0, 1),
-    new THREE.Vector3(-120, -37.8, 169).normalize()
+    new THREE.Vector3(-120, -40, 160).normalize()
   );
 
   useFrame((state) => {
@@ -34,7 +35,7 @@ function CinematicSun() {
       quaternion={flareQuaternion}
     >
       <mesh>
-        <planeGeometry args={[220, 75]} />
+        <planeGeometry args={[220, 110]} />
 
         <shaderMaterial
           ref={flareRef}
@@ -68,94 +69,94 @@ function CinematicSun() {
               float x = p.x;
               float y = p.y;
 
-              float pulse =
-                0.97 + sin(uTime * 0.65) * 0.03;
+              float r = length(p);
 
-              // Núcleo branco extremamente intenso
+              float pulse =
+                0.97 + sin(uTime * 0.7) * 0.03;
+
+              // Núcleo central branco
               float core = exp(
-                -(x*x * 2200.0 + y*y * 5000.0)
+                -(x*x * 1800.0 + y*y * 2400.0)
               );
 
-              // Grande feixe horizontal
-              float mainWidth =
-                0.0025 + 0.018 * exp(-abs(x) * 2.0);
+              // Feixe horizontal principal
+              float horizontalWidth =
+                0.002 + 0.018 * exp(-abs(x) * 2.2);
 
-              float mainRay =
-                exp(-abs(y) / mainWidth) *
-                exp(-abs(x) * 0.85);
+              float horizontal =
+                exp(-abs(y) / horizontalWidth) *
+                exp(-abs(x) * 0.55);
 
-              // Segundo feixe mais fino
+              // Linha horizontal fina e intensa
               float thinRay =
-                exp(-abs(y) / 0.0025) *
-                exp(-abs(x) * 1.4);
+                exp(-abs(y) / 0.0022) *
+                exp(-abs(x) * 1.1);
 
-              // Extensões laterais pontiagudas
-              float longRay =
+              // Extensões horizontais pontiagudas
+              float extendedRay =
                 exp(
                   -abs(y) /
-                  (0.0015 + 0.012 * exp(-abs(x) * 0.8))
+                  (0.0015 + 0.009 * exp(-abs(x)))
                 ) *
-                exp(-abs(x) * 0.48);
+                exp(-abs(x) * 0.35);
 
-              // Raios diagonais
-              float diagonalWidth = 0.003;
+              // Feixe vertical discreto
+              float vertical =
+                exp(-abs(x) / 0.0028) *
+                exp(-abs(y) * 2.5);
 
+              // Diagonais finas
               float diagonalA =
-                exp(-abs(y - x * 0.075) / diagonalWidth) *
-                exp(-abs(x) * 2.0);
+                exp(-abs(y - x * 0.10) / 0.0035) *
+                exp(-abs(x) * 1.8);
 
               float diagonalB =
-                exp(-abs(y + x * 0.075) / diagonalWidth) *
-                exp(-abs(x) * 2.0);
+                exp(-abs(y + x * 0.10) / 0.0035) *
+                exp(-abs(x) * 1.8);
 
-              // Pequeno raio vertical
-              float verticalRay =
-                exp(-abs(x) / 0.003) *
-                exp(-abs(y) * 5.0);
-
-              // Brilho concentrado no centro
-              float centralGlow =
-                exp(-abs(x) * 12.0 - abs(y) * 25.0);
+              // Pequenos reflexos próximos ao núcleo
+              float sparkle =
+                exp(-r * 9.0) * 0.25;
 
               float intensity =
-                core * 3.5 +
-                mainRay * 1.5 +
-                thinRay * 0.7 +
-                longRay * 1.0 +
-                (diagonalA + diagonalB) * 0.55 +
-                verticalRay * 0.45 +
-                centralGlow * 0.35;
+                core * 4.5 +
+                horizontal * 1.8 +
+                thinRay * 1.0 +
+                extendedRay * 1.2 +
+                vertical * 0.35 +
+                (diagonalA + diagonalB) * 0.65 +
+                sparkle;
 
               intensity *= pulse;
 
-              // Azul frio nas extremidades e prata no centro
-              vec3 blue = vec3(0.35, 0.58, 0.95);
-              vec3 silver = vec3(0.82, 0.91, 1.0);
+              // Paleta fria cinematográfica
+              vec3 blue = vec3(0.28, 0.48, 0.85);
+              vec3 silver = vec3(0.78, 0.88, 1.0);
               vec3 white = vec3(1.0, 1.0, 1.0);
 
-              float centerMix =
-                exp(-abs(x) * 5.0);
+              float centerBrightness =
+                exp(-abs(x) * 4.5);
 
               vec3 color = mix(
                 blue,
                 silver,
-                centerMix
+                centerBrightness
               );
 
               color = mix(
                 color,
                 white,
-                clamp(core * 1.5, 0.0, 1.0)
+                clamp(core * 1.8, 0.0, 1.0)
               );
 
               color *= intensity;
 
-              // Desaparecimento gradual nas pontas
+              // Desaparecimento suave nas extremidades
               float edgeFade =
-                1.0 - smoothstep(0.78, 1.0, abs(x));
+                1.0 - smoothstep(0.82, 1.0, abs(x));
 
               float alpha = clamp(
-                intensity * 0.55 * edgeFade,
+                intensity * 0.48 * edgeFade,
                 0.0,
                 0.95
               );
