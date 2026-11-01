@@ -12,20 +12,13 @@ import {
 
 import * as THREE from 'three';
 
-// ============================================
-// 1. SOL CINEMATOGRÁFICO OTIMIZADO
-// ============================================
 
 function CinematicSun() {
-  const coronaRef = useRef<THREE.ShaderMaterial>(null!);
-
-  const [sunTexture] = useTexture(['/8k_sun.jpg']);
-
-  sunTexture.colorSpace = THREE.SRGBColorSpace;
+  const flareRef = useRef<THREE.ShaderMaterial>(null!);
 
   useFrame((state) => {
-    if (coronaRef.current) {
-      coronaRef.current.uniforms.uTime.value =
+    if (flareRef.current) {
+      flareRef.current.uniforms.uTime.value =
         state.clock.elapsedTime;
     }
   });
@@ -33,37 +26,20 @@ function CinematicSun() {
   return (
     <group position={[120, 40, -160]}>
 
-      {/* Superfície solar */}
-
-      <mesh>
-        <sphereGeometry args={[14, 48, 48]} />
-
-        <meshBasicMaterial
-          map={sunTexture}
-          toneMapped={false}
-        />
-      </mesh>
-
-      {/* Corona solar procedural */}
-
       <Billboard>
-
-        <mesh position={[0, 0, -0.2]}>
-
-          <planeGeometry args={[100, 100]} />
+        <mesh>
+          <planeGeometry args={[150, 65]} />
 
           <shaderMaterial
-            ref={coronaRef}
+            ref={flareRef}
             transparent
             depthWrite={false}
             depthTest={true}
-            side={THREE.DoubleSide}
             blending={THREE.AdditiveBlending}
             toneMapped={false}
             uniforms={{
               uTime: { value: 0 },
             }}
-
             vertexShader={`
               varying vec2 vUv;
 
@@ -76,136 +52,100 @@ function CinematicSun() {
                   vec4(position, 1.0);
               }
             `}
-
             fragmentShader={`
               uniform float uTime;
-
               varying vec2 vUv;
-
-              float hash(vec2 p) {
-                return fract(
-                  sin(dot(p, vec2(127.1, 311.7))) *
-                  43758.5453
-                );
-              }
-
-              float noise(vec2 p) {
-                vec2 i = floor(p);
-                vec2 f = fract(p);
-
-                f = f * f * (3.0 - 2.0 * f);
-
-                return mix(
-                  mix(
-                    hash(i),
-                    hash(i + vec2(1.0, 0.0)),
-                    f.x
-                  ),
-                  mix(
-                    hash(i + vec2(0.0, 1.0)),
-                    hash(i + vec2(1.0, 1.0)),
-                    f.x
-                  ),
-                  f.y
-                );
-              }
-
-              float fbm(vec2 p) {
-                float value = 0.0;
-                float amplitude = 0.5;
-
-                for (int i = 0; i < 3; i++) {
-                  value += noise(p) * amplitude;
-                  p *= 2.0;
-                  amplitude *= 0.5;
-                }
-
-                return value;
-              }
 
               void main() {
 
                 vec2 p = (vUv - 0.5) * 2.0;
 
-                float radius = length(p);
+                float x = p.x;
+                float y = p.y;
 
-                float plasma = fbm(
-                  p * 4.0 +
-                  vec2(
-                    uTime * 0.035,
-                    -uTime * 0.025
-                  )
+                // Núcleo central extremamente brilhante
+                float core = exp(
+                  -(x*x*1800.0 + y*y*1800.0)
                 );
 
-                float distortion =
-                  (plasma - 0.5) * 0.12;
+                // Brilho horizontal principal
+                float horizontal = exp(
+                  -abs(y) * 95.0
+                  -abs(x) * 1.6
+                );
 
-                float coronaRadius =
-                  radius - distortion;
+                // Extensão luminosa horizontal
+                float longRay = exp(
+                  -abs(y) * 32.0
+                  -abs(x) * 2.8
+                );
 
-                // Brilho central difuso
+                // Raios horizontais pontiagudos
+                float sharpRay = exp(
+                  -abs(y) * 180.0
+                  -abs(x) * 0.9
+                );
 
-                float innerGlow =
-                  exp(-radius * 5.0) * 0.20;
+                // Raios verticais menores
+                float vertical = exp(
+                  -abs(x) * 75.0
+                  -abs(y) * 7.0
+                );
 
-                // Halo externo suave
+                // Raios diagonais
+                float diagonalA = exp(
+                  -abs(y - x * 0.10) * 110.0
+                  -abs(x) * 4.0
+                );
 
-                float outerGlow =
-                  exp(-radius * 2.3) * 0.25;
+                float diagonalB = exp(
+                  -abs(y + x * 0.10) * 110.0
+                  -abs(x) * 4.0
+                );
 
-                // Estrutura irregular do plasma
+                // Pequena pulsação luminosa
+                float pulse =
+                  0.94 + sin(uTime * 0.8) * 0.06;
 
-                float plasmaRing =
-                  exp(
-                    -pow(
-                      (coronaRadius - 0.38) * 7.0,
-                      2.0
-                    )
-                  ) * (0.07 + plasma * 0.08);
+                float intensity =
+                  core * 2.5 +
+                  horizontal * 0.9 +
+                  longRay * 0.55 +
+                  sharpRay * 0.65 +
+                  vertical * 0.28 +
+                  (diagonalA + diagonalB) * 0.16;
 
-                // Desaparecimento suave nas bordas
+                intensity *= pulse;
 
-                float edgeFade =
-                  1.0 - smoothstep(0.72, 1.0, radius);
-
-                float alpha = (
-                  innerGlow +
-                  outerGlow +
-                  plasmaRing
-                ) * edgeFade;
-
-                // Cores solares
-
-                vec3 coreColor =
-                  vec3(1.0, 0.91, 0.70);
-
-                vec3 coronaColor =
-                  vec3(1.0, 0.35, 0.09);
+                // Cores prateadas e azuladas
+                vec3 silver = vec3(0.88, 0.96, 1.0);
+                vec3 blue = vec3(0.35, 0.62, 1.0);
 
                 vec3 color = mix(
-                  coreColor,
-                  coronaColor,
-                  smoothstep(0.15, 0.9, radius)
+                  blue,
+                  silver,
+                  clamp(core + horizontal * 0.7, 0.0, 1.0)
                 );
 
-                color *= 0.9 + plasma * 0.35;
+                color *= intensity;
 
-                gl_FragColor = vec4(
-                  color,
-                  clamp(alpha, 0.0, 0.65)
-                );
+                // Suavização das extremidades
+                float edgeFade =
+                  1.0 - smoothstep(0.72, 1.0, abs(x));
+
+                float alpha =
+                  clamp(intensity * edgeFade, 0.0, 1.0);
+
+                gl_FragColor = vec4(color, alpha);
               }
             `}
           />
-
         </mesh>
-
       </Billboard>
 
     </group>
   );
 }
-
 // ============================================
 // 2. ATMOSFERA PLANETÁRIA
 // ============================================
