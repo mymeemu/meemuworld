@@ -596,9 +596,9 @@ function MilkyWayBackground() {
     </mesh>
   );
 }
-
 function FirstPersonArms() {
   const { camera } = useThree();
+  const groupRef = useRef<THREE.Group>(null!);
 
   const { scene } = useGLTF(
     '/models/avatar/first_person_arms.glb'
@@ -606,7 +606,6 @@ function FirstPersonArms() {
 
   const arms = useMemo(() => {
     const model = clone(scene);
-    const group = new THREE.Group();
 
     const bounds = new THREE.Box3().setFromObject(model);
     const center = bounds.getCenter(new THREE.Vector3());
@@ -614,6 +613,7 @@ function FirstPersonArms() {
     const scale = 0.015;
 
     model.scale.setScalar(scale);
+
     model.position.set(
       -center.x * scale,
       -center.y * scale,
@@ -626,11 +626,14 @@ function FirstPersonArms() {
         child.renderOrder = 9999;
 
         const materials = Array.isArray(child.material)
-          ? child.material
-          : [child.material];
+          ? child.material.map((material) => material.clone())
+          : child.material.clone();
 
-        materials.forEach((material) => {
-          material = material.clone();
+        const materialList = Array.isArray(materials)
+          ? materials
+          : [materials];
+
+        materialList.forEach((material) => {
           material.visible = true;
           material.transparent = false;
           material.opacity = 1;
@@ -640,30 +643,29 @@ function FirstPersonArms() {
           material.needsUpdate = true;
         });
 
-        child.material = Array.isArray(child.material)
-          ? materials.map((material) => material.clone())
-          : materials[0];
+        child.material = materials;
       }
     });
 
-    group.add(model);
-    return group;
+    return model;
   }, [scene]);
 
-useFrame(() => {
-  if (!groupRef.current) return;
+  useFrame(() => {
+    if (!groupRef.current) return;
 
-  groupRef.current.position.copy(camera.position);
-  groupRef.current.quaternion.copy(camera.quaternion);
+    groupRef.current.position.copy(camera.position);
+    groupRef.current.quaternion.copy(camera.quaternion);
 
-  // Posicionamento relativo à câmera
-  groupRef.current.translateY(-0.25);
-  groupRef.current.translateZ(-0.35);
-});
+    groupRef.current.translateY(-0.25);
+    groupRef.current.translateZ(-0.35);
+  });
 
-  return <primitive object={arms} />;
+  return (
+    <group ref={groupRef}>
+      <primitive object={arms} />
+    </group>
+  );
 }
-
 useGLTF.preload('/models/avatar/first_person_arms.glb');
 
 
