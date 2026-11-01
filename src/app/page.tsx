@@ -596,7 +596,6 @@ function MilkyWayBackground() {
     </mesh>
   );
 }
-
 function FirstPersonArms() {
   const { camera } = useThree();
 
@@ -607,46 +606,39 @@ function FirstPersonArms() {
   const arms = useMemo(() => clone(scene), [scene]);
 
   useEffect(() => {
+    arms.updateMatrixWorld(true);
+
     const bounds = new THREE.Box3().setFromObject(arms);
     const size = bounds.getSize(new THREE.Vector3());
     const center = bounds.getCenter(new THREE.Vector3());
 
-    const largestDimension = Math.max(
-      size.x,
-      size.y,
-      size.z,
-      0.001
-    );
+    let meshCount = 0;
 
-    const scale = 0.95 / largestDimension;
+    arms.traverse((child) => {
+      if (child instanceof THREE.Mesh) {
+        meshCount++;
+      }
+    });
 
-    arms.scale.setScalar(scale);
+    console.log('MEEMU - DIAGNÓSTICO DOS BRAÇOS', {
+      carregado: true,
+      malhas: meshCount,
+      tamanho: size,
+      centro: center,
+      boundsVazio: bounds.isEmpty(),
+    });
 
-    arms.position.set(
-      -center.x * scale,
-      -0.38 - center.y * scale,
-      -0.78 - center.z * scale
-    );
+    arms.scale.setScalar(1);
+    arms.position.set(0, 0, -1);
 
     arms.traverse((child) => {
       if (child instanceof THREE.Mesh) {
         child.frustumCulled = false;
         child.renderOrder = 1000;
-
-        const materials = Array.isArray(child.material)
-          ? child.material
-          : [child.material];
-
-        materials.forEach((material) => {
-          material.depthTest = false;
-          material.depthWrite = false;
-          material.needsUpdate = true;
-        });
       }
     });
 
     camera.add(arms);
-    camera.updateMatrixWorld(true);
 
     return () => {
       camera.remove(arms);
