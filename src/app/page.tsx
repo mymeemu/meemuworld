@@ -909,13 +909,46 @@ function TexturedGround() {
 function AlienRocks() {
   const { scene } = useGLTF('/textures/rocks.meemu.glb');
 
+  const rock = useMemo(() => scene.clone(true), [scene]);
+
+  const rockData = useMemo(() => {
+    const bounds = new THREE.Box3().setFromObject(rock);
+    const size = bounds.getSize(new THREE.Vector3());
+    const center = bounds.getCenter(new THREE.Vector3());
+
+    return {
+      center: [center.x, center.y, center.z] as [number, number, number],
+      coreScale: [
+        size.x * 0.48,
+        size.y * 0.48,
+        size.z * 0.48,
+      ] as [number, number, number],
+    };
+  }, [rock]);
+
   return (
     <group
       position={[0, -0.45, 0]}
-      rotation={[0.18, 0.35, 0]}
+      rotation={[0, 0, 0]}
     >
+      {/* Núcleo sólido interno */}
+      <mesh
+        position={rockData.center}
+        scale={rockData.coreScale}
+        castShadow
+        receiveShadow
+      >
+        <dodecahedronGeometry args={[1, 3]} />
+        <meshStandardMaterial
+          color="#55534f"
+          roughness={1}
+          metalness={0}
+        />
+      </mesh>
+
+      {/* Superfície original escaneada */}
       <primitive
-        object={scene.clone()}
+        object={rock}
         scale={1}
       />
     </group>
