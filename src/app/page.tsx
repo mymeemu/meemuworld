@@ -621,7 +621,7 @@ function FirstPersonArms() {
       -center.z * scale
     );
 
-    model.rotation.y = Math.PI;
+    model.rotation.set(-Math.PI / 2, Math.PI, 0);
 
     model.traverse((child) => {
       if (child instanceof THREE.Mesh) {
