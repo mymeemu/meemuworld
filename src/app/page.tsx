@@ -16,13 +16,13 @@ import {
 
 import {
   OrbitControls,
+  PointerLockControls,
   useTexture,
   Sparkles,
   useGLTF,
 } from '@react-three/drei';
 
 import * as THREE from 'three';
-
 // ============================================
 // 1. SOL CINEMATOGRÁFICO
 // ============================================
@@ -596,26 +596,66 @@ function MilkyWayBackground() {
   );
 }
 
-// ============================================
-// 7. AVATAR COM MOVIMENTAÇÃO WASD
-// ============================================
+function FirstPersonArms() {
+  const { camera } = useThree();
+
+  const { scene } = useGLTF(
+    '/models/avatar/first_person_arms.glb'
+  );
+
+  const arms = useMemo(
+    () => scene.clone(true),
+    [scene]
+  );
+
+  useEffect(() => {
+    arms.position.set(0, -0.38, -0.72);
+    arms.rotation.set(0, 0, 0);
+    arms.scale.setScalar(0.85);
+
+    arms.traverse((child) => {
+      if (child instanceof THREE.Mesh) {
+        child.frustumCulled = false;
+        child.castShadow = true;
+        child.receiveShadow = true;
+      }
+    });
+
+    camera.add(arms);
+
+    return () => {
+      camera.remove(arms);
+    };
+  }, [camera, arms]);
+
+  return null;
+}
+
+useGLTF.preload('/models/avatar/first_person_arms.glb');
+
 
 function PlayerAvatar({
   isCustomizing,
-  controlsRef,
 }: {
   isCustomizing: boolean;
-  controlsRef: React.RefObject<any>;
 }) {
   const avatarRef = useRef<THREE.Group>(null!);
   const keys = useRef<Set<string>>(new Set());
 
   const { camera } = useThree();
 
+  const forward = useMemo(() => new THREE.Vector3(), []);
+  const right = useMemo(() => new THREE.Vector3(), []);
+  const movement = useMemo(() => new THREE.Vector3(), []);
+  const up = useMemo(() => new THREE.Vector3(0, 1, 0), []);
+
   useEffect(() => {
     keys.current.clear();
 
     if (isCustomizing) return;
+
+    camera.position.set(0, 1.55, 0);
+    camera.rotation.set(0, 0, 0);
 
     const validKeys = [
       'w',
@@ -655,17 +695,11 @@ function PlayerAvatar({
       window.removeEventListener('blur', handleBlur);
       keys.current.clear();
     };
-  }, [isCustomizing]);
-
-  const forward = useMemo(() => new THREE.Vector3(), []);
-  const right = useMemo(() => new THREE.Vector3(), []);
-  const movement = useMemo(() => new THREE.Vector3(), []);
+  }, [camera, isCustomizing]);
 
   useFrame((state, delta) => {
     if (!avatarRef.current) return;
 
-    // Sem rotação automática no modo de personalização.
-    // O personagem permanece parado até receber movimento.
     if (!isCustomizing) {
       const keySet = keys.current;
 
@@ -678,26 +712,11 @@ function PlayerAvatar({
         (keySet.has('a') || keySet.has('arrowleft') ? 1 : 0);
 
       if (forwardInput !== 0 || sideInput !== 0) {
-        // Direção baseada no ponto para onde a câmera olha.
-        if (controlsRef.current) {
-          forward
-            .subVectors(
-              controlsRef.current.target,
-              camera.position
-            );
-        } else {
-          camera.getWorldDirection(forward);
-        }
-
+        camera.getWorldDirection(forward);
         forward.y = 0;
+        forward.normalize();
 
-        if (forward.lengthSq() > 0) {
-          forward.normalize();
-        }
-
-        // Direita relativa à câmera.
-        right.crossVectors(forward, new THREE.Vector3(0, 1, 0));
-        right.normalize();
+        right.crossVectors(forward, up).normalize();
 
         movement.set(0, 0, 0);
         movement.addScaledVector(forward, forwardInput);
@@ -706,77 +725,76 @@ function PlayerAvatar({
         if (movement.lengthSq() > 0) {
           movement.normalize();
 
-          // Velocidade do personagem.
           const speed = 8;
-          movement.multiplyScalar(speed * Math.min(delta, 0.05));
 
-          // Move o personagem.
+          movement.multiplyScalar(
+            speed * Math.min(delta, 0.05)
+          );
+
           avatarRef.current.position.x += movement.x;
           avatarRef.current.position.z += movement.z;
-
-          // A câmera acompanha o personagem sem girar ao redor dele.
-          camera.position.add(movement);
-
-          if (controlsRef.current) {
-            controlsRef.current.target.add(movement);
-            controlsRef.current.update();
-          }
-
-          // O personagem olha para a direção do deslocamento.
-          const targetRotation = Math.atan2(
-            movement.x,
-            movement.z
-          );
-
-          avatarRef.current.rotation.y = THREE.MathUtils.damp(
-            avatarRef.current.rotation.y,
-            targetRotation,
-            12,
-            delta
-          );
         }
       }
     }
 
-    // Pequena animação vertical, sem rotação automática.
     avatarRef.current.position.y =
       Math.sin(state.clock.elapsedTime * 1.5) * 0.035;
+
+    if (!isCustomizing) {
+      camera.position.set(
+        avatarRef.current.position.x,
+        avatarRef.current.position.y + 1.55,
+        avatarRef.current.position.z
+      );
+    }
   });
 
   return (
     <group ref={avatarRef} position={[0, 0, 0]}>
-      <mesh position={[0, 0.85, 0]}>
-        <capsuleGeometry args={[0.4, 1.1, 4, 16]} />
+      {isCustomizing && (
+        <>
+          <mesh position={[0, 0.85, 0]}>
+            <capsuleGeometry args={[0.4, 1.1, 4, 16]} />
 
-        <meshStandardMaterial
-          color={isCustomizing ? '#0284c7' : '#94a3b8'}
-          roughness={0.3}
-          metalness={0.65}
-        />
-      </mesh>
+            <meshStandardMaterial
+              color="#0284c7"
+              roughness={0.3}
+              metalness={0.65}
+            />
+          </mesh>
 
-      <mesh position={[0, 1.65, 0.08]}>
-        <sphereGeometry args={[0.28, 24, 24]} />
+          <mesh position={[0, 1.65, 0.08]}>
+            <sphereGeometry args={[0.28, 24, 24]} />
 
-        <meshStandardMaterial
-          color="#111827"
-          roughness={0.15}
-          metalness={0.9}
-        />
-      </mesh>
+            <meshStandardMaterial
+              color="#111827"
+              roughness={0.15}
+              metalness={0.9}
+            />
+          </mesh>
 
-      <mesh position={[0, 1.67, 0.29]}>
-        <sphereGeometry
-          args={[0.17, 24, 24, 0, Math.PI * 2, 0, Math.PI / 2]}
-        />
+          <mesh position={[0, 1.67, 0.29]}>
+            <sphereGeometry
+              args={[
+                0.17,
+                24,
+                24,
+                0,
+                Math.PI * 2,
+                0,
+                Math.PI / 2,
+              ]}
+            />
 
-        <meshBasicMaterial
-          color="#38bdf8"
-          transparent
-          opacity={0.85}
-          toneMapped={false}
-        />
-      </mesh>
+            <meshBasicMaterial
+              color="#38bdf8"
+              transparent
+              opacity={0.85}
+              toneMapped={false}
+            />
+          </mesh>
+        </>
+      )}
     </group>
   );
 }
@@ -919,9 +937,6 @@ function AlienRocks() {
 
 useGLTF.preload('/models/rock_moss_set_01_1k.gltf');
 
-// ============================================
-// 11. CENÁRIO COMPLETO
-// ============================================
 
 function SpaceScene({
   isCustomizing,
@@ -985,24 +1000,30 @@ function SpaceScene({
 
         <PlayerAvatar
           isCustomizing={isCustomizing}
-          controlsRef={controlsRef}
         />
 
-        <OrbitControls
-          ref={controlsRef}
-          enableDamping
-          dampingFactor={0.06}
-          enableZoom
-          enablePan={false}
-          minDistance={3}
-          maxDistance={100}
-          maxPolarAngle={Math.PI / 2}
-          target={[0, 1, 0]}
-        />
+        {!isCustomizing && <FirstPersonArms />}
+
+        {isCustomizing ? (
+          <OrbitControls
+            ref={controlsRef}
+            enableDamping
+            dampingFactor={0.06}
+            enableZoom
+            enablePan={false}
+            minDistance={3}
+            maxDistance={100}
+            maxPolarAngle={Math.PI / 2}
+            target={[0, 1, 0]}
+          />
+        ) : (
+          <PointerLockControls />
+        )}
       </Suspense>
     </>
   );
 }
+
 // ============================================
 // 12. PÁGINA PRINCIPAL
 // ============================================
