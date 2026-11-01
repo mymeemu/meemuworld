@@ -903,7 +903,7 @@ function SpaceScene({
 
       <Suspense fallback={null}>
         <MeemuPlanetModel />
-        <MeemuGalaxyModel />
+        {/* <MeemuGalaxyModel /> */}
       </Suspense>
 
       <Sparkles
