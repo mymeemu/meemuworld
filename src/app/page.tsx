@@ -12,28 +12,32 @@ import {
 import * as THREE from 'three';
 
 // ============================================
-// 1. SOL CINEMATOGRÁFICO (SHADER ORIGINAL + BILLBOARD)
+// 1. SOL CINEMATOGRÁFICO (SHADER ORIGINAL SEM BILLBOARD)
 // ============================================
 
+
 function CinematicSun() {
-  const groupRef = useRef<THREE.Group>(null!);
   const flareRef = useRef<THREE.ShaderMaterial>(null!);
 
-  // Faz o plano do sol acompanhar e olhar sempre para a câmara, 
-  // mantendo o efeito perfeito independentemente de onde o jogador olhe.
+  const flareQuaternion = new THREE.Quaternion().setFromUnitVectors(
+    new THREE.Vector3(0, 0, 1),
+    new THREE.Vector3(-120, -40, 160).normalize()
+  );
+
   useFrame((state) => {
-    if (groupRef.current) {
-      groupRef.current.quaternion.copy(state.camera.quaternion);
-    }
     if (flareRef.current) {
-      flareRef.current.uniforms.uTime.value = state.clock.elapsedTime;
+      flareRef.current.uniforms.uTime.value =
+        state.clock.elapsedTime;
     }
   });
 
   return (
-    <group ref={groupRef} position={[120, 40, -160]}>
+    <group
+      position={[120, 40, -160]}
+      quaternion={flareQuaternion}
+    >
       <mesh>
-        <planeGeometry args={[220, 110]} />
+        <planeGeometry args={[180, 180]} />
 
         <shaderMaterial
           ref={flareRef}
@@ -60,100 +64,128 @@ function CinematicSun() {
             uniform float uTime;
             varying vec2 vUv;
 
+            float ray(
+              float angle,
+              float target,
+              float width,
+              float radius,
+              float length
+            ) {
+              float difference = abs(
+                atan(
+                  sin(angle - target),
+                  cos(angle - target)
+                )
+              );
+
+              float angular = exp(
+                -(difference * difference) /
+                (width * width)
+              );
+
+              float radial = exp(
+                -radius / length
+              );
+
+              return angular * radial;
+            }
+
             void main() {
               vec2 p = (vUv - 0.5) * 2.0;
 
-              float x = p.x;
-              float y = p.y;
-
               float r = length(p);
+              float angle = atan(p.y, p.x);
 
               float pulse =
-                0.97 + sin(uTime * 0.7) * 0.03;
+                0.97 + sin(uTime * 0.65) * 0.03;
 
-              // Núcleo central branco
-              float core = exp(
-                -(x*x * 1800.0 + y*y * 2400.0)
-              );
+              // Irregularidade orgânica da explosão
+              float distortion =
+                sin(angle * 5.0 + 0.8) * 0.045 +
+                sin(angle * 9.0 - 1.4) * 0.025 +
+                sin(angle * 13.0) * 0.012;
 
-              // Feixe horizontal principal
-              float horizontalWidth =
-                0.002 + 0.018 * exp(-abs(x) * 2.2);
+              float radius = r + distortion;
 
-              float horizontal =
-                exp(-abs(y) / horizontalWidth) *
-                exp(-abs(x) * 0.55);
+              // Raios principais: diferentes direções e comprimentos
+              float rays = 0.0;
 
-              // Linha horizontal fina e intensa
-              float thinRay =
-                exp(-abs(y) / 0.0022) *
-                exp(-abs(x) * 1.1);
+              rays += ray(angle, 0.18, 0.018, radius, 0.85) * 1.8;
+              rays += ray(angle, 0.92, 0.026, radius, 0.62) * 1.4;
+              rays += ray(angle, 1.72, 0.020, radius, 0.92) * 2.0;
+              rays += ray(angle, 2.48, 0.032, radius, 0.48) * 1.3;
+              rays += ray(angle, 3.12, 0.017, radius, 0.75) * 1.7;
+              rays += ray(angle, 3.86, 0.025, radius, 0.55) * 1.2;
+              rays += ray(angle, 4.62, 0.019, radius, 0.88) * 1.8;
+              rays += ray(angle, 5.35, 0.030, radius, 0.52) * 1.3;
 
-              // Extensões horizontais pontiagudas
-              float extendedRay =
-                exp(
-                  -abs(y) /
-                  (0.0015 + 0.009 * exp(-abs(x)))
-                ) *
-                exp(-abs(x) * 0.35);
+              // Raios secundários mais delicados
+              float secondary = 0.0;
 
-              // Feixe vertical discreto
-              float vertical =
-                exp(-abs(x) / 0.0028) *
-                exp(-abs(y) * 2.5);
+              secondary += ray(angle, 0.58, 0.010, radius, 0.38);
+              secondary += ray(angle, 1.35, 0.012, radius, 0.32);
+              secondary += ray(angle, 2.08, 0.009, radius, 0.42);
+              secondary += ray(angle, 2.85, 0.011, radius, 0.35);
+              secondary += ray(angle, 3.55, 0.010, radius, 0.40);
+              secondary += ray(angle, 4.28, 0.012, radius, 0.34);
+              secondary += ray(angle, 5.02, 0.009, radius, 0.42);
+              secondary += ray(angle, 5.78, 0.011, radius, 0.36);
 
-              // Diagonais finas
-              float diagonalA =
-                exp(-abs(y - x * 0.10) / 0.0035) *
-                exp(-abs(x) * 1.8);
+              // Núcleo compacto e extremamente luminoso
+              float core = exp(-r * r * 420.0);
 
-              float diagonalB =
-                exp(-abs(y + x * 0.10) / 0.0035) *
-                exp(-abs(x) * 1.8);
+              // Energia difusa da explosão, com contorno irregular
+              float explosionEdge =
+                0.42 + distortion * 1.5;
 
-              // Pequenos reflexos próximos ao núcleo
-              float sparkle =
-                exp(-r * 9.0) * 0.25;
+              float explosion =
+                exp(-radius * 5.0) *
+                (1.0 - smoothstep(
+                  explosionEdge,
+                  explosionEdge + 0.30,
+                  r
+                ));
+
+              // Filamentos luminosos próximos ao centro
+              float filaments =
+                exp(-r * 7.0) *
+                (
+                  0.5 +
+                  0.5 * sin(angle * 17.0 + r * 24.0)
+                );
 
               float intensity =
-                core * 4.5 +
-                horizontal * 1.8 +
-                thinRay * 1.0 +
-                extendedRay * 1.2 +
-                vertical * 0.35 +
-                (diagonalA + diagonalB) * 0.65 +
-                sparkle;
+                core * 5.5 +
+                rays * 1.15 +
+                secondary * 0.75 +
+                explosion * 1.1 +
+                filaments * 0.35;
 
               intensity *= pulse;
 
-              // Paleta fria cinematográfica
-              vec3 blue = vec3(0.28, 0.48, 0.85);
-              vec3 silver = vec3(0.78, 0.88, 1.0);
+              // Gradiente branco, prata e azul-gelo
+              vec3 blue = vec3(0.22, 0.42, 0.85);
+              vec3 silver = vec3(0.72, 0.84, 1.0);
               vec3 white = vec3(1.0, 1.0, 1.0);
-
-              float centerBrightness =
-                exp(-abs(x) * 4.5);
 
               vec3 color = mix(
                 blue,
                 silver,
-                centerBrightness
+                clamp(1.0 - r * 0.65, 0.0, 1.0)
               );
 
               color = mix(
                 color,
                 white,
-                clamp(core * 1.8, 0.0, 1.0)
+                clamp(core * 1.8 + explosion * 0.45, 0.0, 1.0)
               );
 
               color *= intensity;
 
-              // Desaparecimento suave nas extremidades
-              float edgeFade =
-                1.0 - smoothstep(0.82, 1.0, abs(x));
+              float fade = 1.0 - smoothstep(0.88, 1.0, r);
 
               float alpha = clamp(
-                intensity * 0.48 * edgeFade,
+                intensity * 0.48 * fade,
                 0.0,
                 0.95
               );
@@ -166,6 +198,7 @@ function CinematicSun() {
     </group>
   );
 }
+
 // ============================================
 // 2. ATMOSFERA PLANETÁRIA
 // ============================================
