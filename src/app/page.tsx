@@ -606,30 +606,18 @@ function FirstPersonArms() {
   const arms = useMemo(() => clone(scene), [scene]);
 
   useEffect(() => {
-    arms.updateMatrixWorld(true);
-
     const bounds = new THREE.Box3().setFromObject(arms);
-    const size = bounds.getSize(new THREE.Vector3());
     const center = bounds.getCenter(new THREE.Vector3());
 
-    let meshCount = 0;
+    const scale = 0.015;
 
-    arms.traverse((child) => {
-      if (child instanceof THREE.Mesh) {
-        meshCount++;
-      }
-    });
+    arms.scale.setScalar(scale);
 
-    console.log('MEEMU - DIAGNÓSTICO DOS BRAÇOS', {
-      carregado: true,
-      malhas: meshCount,
-      tamanho: size,
-      centro: center,
-      boundsVazio: bounds.isEmpty(),
-    });
-
-    arms.scale.setScalar(1);
-    arms.position.set(0, 0, -1);
+    arms.position.set(
+      -center.x * scale,
+      -0.28 - center.y * scale,
+      -0.75 - center.z * scale
+    );
 
     arms.traverse((child) => {
       if (child instanceof THREE.Mesh) {
@@ -647,7 +635,6 @@ function FirstPersonArms() {
 
   return null;
 }
-
 useGLTF.preload('/models/avatar/first_person_arms.glb');
 
 
