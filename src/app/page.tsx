@@ -614,6 +614,82 @@ function PlayerAvatar({
 // 7. CENÁRIO COMPLETO
 // ============================================
 
+function CyanMoon({
+  position,
+}: {
+  position: [number, number, number];
+}) {
+  return (
+    <group position={position}>
+      {/* Halo externo difuso */}
+      <mesh>
+        <sphereGeometry args={[11, 48, 48]} />
+        <meshBasicMaterial
+          color="#00dfff"
+          transparent
+          opacity={0.035}
+          blending={THREE.AdditiveBlending}
+          depthWrite={false}
+          side={THREE.DoubleSide}
+          toneMapped={false}
+        />
+      </mesh>
+
+      {/* Aura intermediária */}
+      <mesh>
+        <sphereGeometry args={[8, 48, 48]} />
+        <meshBasicMaterial
+          color="#16eaff"
+          transparent
+          opacity={0.075}
+          blending={THREE.AdditiveBlending}
+          depthWrite={false}
+          side={THREE.DoubleSide}
+          toneMapped={false}
+        />
+      </mesh>
+
+      {/* Brilho próximo à superfície */}
+      <mesh>
+        <sphereGeometry args={[6.2, 48, 48]} />
+        <meshBasicMaterial
+          color="#42efff"
+          transparent
+          opacity={0.16}
+          blending={THREE.AdditiveBlending}
+          depthWrite={false}
+          side={THREE.DoubleSide}
+          toneMapped={false}
+        />
+      </mesh>
+
+      {/* Corpo luminoso da lua */}
+      <mesh>
+        <sphereGeometry args={[5, 64, 64]} />
+        <meshBasicMaterial
+          color="#48ddec"
+          toneMapped={false}
+        />
+      </mesh>
+    </group>
+  );
+}
+
+function ThreeMoons() {
+  return (
+    <group position={[0, 58, -185]}>
+      {/* Lua superior */}
+      <CyanMoon position={[0, 15, 0]} />
+
+      {/* Lua inferior esquerda */}
+      <CyanMoon position={[-23, 0, 0]} />
+
+      {/* Lua inferior direita */}
+      <CyanMoon position={[23, 0, 0]} />
+    </group>
+  );
+}
+
 function SpaceScene({
   isCustomizing,
 }: {
@@ -654,11 +730,9 @@ function SpaceScene({
       {/* Corpos celestes */}
 
       <CinematicSun />
-
       <Earth />
-
       <Saturn />
-
+      <ThreeMoons />
       {/* Piso */}
 
       <mesh
