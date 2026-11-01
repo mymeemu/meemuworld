@@ -16,6 +16,12 @@ import * as THREE from 'three';
 function CinematicSun() {
   const flareRef = useRef<THREE.ShaderMaterial>(null!);
 
+  // Orientação inicial fixa: não acompanha os movimentos da câmera.
+  const flareQuaternion = new THREE.Quaternion().setFromUnitVectors(
+    new THREE.Vector3(0, 0, 1),
+    new THREE.Vector3(-120, -37.8, 169).normalize()
+  );
+
   useFrame((state) => {
     if (flareRef.current) {
       flareRef.current.uniforms.uTime.value =
@@ -24,128 +30,146 @@ function CinematicSun() {
   });
 
   return (
-    <group position={[120, 40, -160]}>
+    <group
+      position={[120, 40, -160]}
+      quaternion={flareQuaternion}
+    >
+      <mesh>
+        <planeGeometry args={[220, 75]} />
 
-      <Billboard>
-        <mesh>
-          <planeGeometry args={[150, 65]} />
+        <shaderMaterial
+          ref={flareRef}
+          transparent
+          depthWrite={false}
+          depthTest={true}
+          blending={THREE.AdditiveBlending}
+          toneMapped={false}
+          uniforms={{
+            uTime: { value: 0 },
+          }}
+          vertexShader={`
+            varying vec2 vUv;
 
-          <shaderMaterial
-            ref={flareRef}
-            transparent
-            depthWrite={false}
-            depthTest={true}
-            blending={THREE.AdditiveBlending}
-            toneMapped={false}
-            uniforms={{
-              uTime: { value: 0 },
-            }}
-            vertexShader={`
-              varying vec2 vUv;
+            void main() {
+              vUv = uv;
 
-              void main() {
-                vUv = uv;
+              gl_Position =
+                projectionMatrix *
+                modelViewMatrix *
+                vec4(position, 1.0);
+            }
+          `}
+          fragmentShader={`
+            uniform float uTime;
+            varying vec2 vUv;
 
-                gl_Position =
-                  projectionMatrix *
-                  modelViewMatrix *
-                  vec4(position, 1.0);
-              }
-            `}
-            fragmentShader={`
-              uniform float uTime;
-              varying vec2 vUv;
+            void main() {
+              vec2 p = (vUv - 0.5) * 2.0;
 
-              void main() {
+              float x = p.x;
+              float y = p.y;
 
-                vec2 p = (vUv - 0.5) * 2.0;
+              float pulse =
+                0.97 + sin(uTime * 0.65) * 0.03;
 
-                float x = p.x;
-                float y = p.y;
+              // Núcleo branco extremamente intenso
+              float core = exp(
+                -(x*x * 2200.0 + y*y * 5000.0)
+              );
 
-                // Núcleo central extremamente brilhante
-                float core = exp(
-                  -(x*x*1800.0 + y*y*1800.0)
-                );
+              // Grande feixe horizontal
+              float mainWidth =
+                0.0025 + 0.018 * exp(-abs(x) * 2.0);
 
-                // Brilho horizontal principal
-                float horizontal = exp(
-                  -abs(y) * 95.0
-                  -abs(x) * 1.6
-                );
+              float mainRay =
+                exp(-abs(y) / mainWidth) *
+                exp(-abs(x) * 0.85);
 
-                // Extensão luminosa horizontal
-                float longRay = exp(
-                  -abs(y) * 32.0
-                  -abs(x) * 2.8
-                );
+              // Segundo feixe mais fino
+              float thinRay =
+                exp(-abs(y) / 0.0025) *
+                exp(-abs(x) * 1.4);
 
-                // Raios horizontais pontiagudos
-                float sharpRay = exp(
-                  -abs(y) * 180.0
-                  -abs(x) * 0.9
-                );
+              // Extensões laterais pontiagudas
+              float longRay =
+                exp(
+                  -abs(y) /
+                  (0.0015 + 0.012 * exp(-abs(x) * 0.8))
+                ) *
+                exp(-abs(x) * 0.48);
 
-                // Raios verticais menores
-                float vertical = exp(
-                  -abs(x) * 75.0
-                  -abs(y) * 7.0
-                );
+              // Raios diagonais
+              float diagonalWidth = 0.003;
 
-                // Raios diagonais
-                float diagonalA = exp(
-                  -abs(y - x * 0.10) * 110.0
-                  -abs(x) * 4.0
-                );
+              float diagonalA =
+                exp(-abs(y - x * 0.075) / diagonalWidth) *
+                exp(-abs(x) * 2.0);
 
-                float diagonalB = exp(
-                  -abs(y + x * 0.10) * 110.0
-                  -abs(x) * 4.0
-                );
+              float diagonalB =
+                exp(-abs(y + x * 0.075) / diagonalWidth) *
+                exp(-abs(x) * 2.0);
 
-                // Pequena pulsação luminosa
-                float pulse =
-                  0.94 + sin(uTime * 0.8) * 0.06;
+              // Pequeno raio vertical
+              float verticalRay =
+                exp(-abs(x) / 0.003) *
+                exp(-abs(y) * 5.0);
 
-                float intensity =
-                  core * 2.5 +
-                  horizontal * 0.9 +
-                  longRay * 0.55 +
-                  sharpRay * 0.65 +
-                  vertical * 0.28 +
-                  (diagonalA + diagonalB) * 0.16;
+              // Brilho concentrado no centro
+              float centralGlow =
+                exp(-abs(x) * 12.0 - abs(y) * 25.0);
 
-                intensity *= pulse;
+              float intensity =
+                core * 3.5 +
+                mainRay * 1.5 +
+                thinRay * 0.7 +
+                longRay * 1.0 +
+                (diagonalA + diagonalB) * 0.55 +
+                verticalRay * 0.45 +
+                centralGlow * 0.35;
 
-                // Cores prateadas e azuladas
-                vec3 silver = vec3(0.88, 0.96, 1.0);
-                vec3 blue = vec3(0.35, 0.62, 1.0);
+              intensity *= pulse;
 
-                vec3 color = mix(
-                  blue,
-                  silver,
-                  clamp(core + horizontal * 0.7, 0.0, 1.0)
-                );
+              // Azul frio nas extremidades e prata no centro
+              vec3 blue = vec3(0.35, 0.58, 0.95);
+              vec3 silver = vec3(0.82, 0.91, 1.0);
+              vec3 white = vec3(1.0, 1.0, 1.0);
 
-                color *= intensity;
+              float centerMix =
+                exp(-abs(x) * 5.0);
 
-                // Suavização das extremidades
-                float edgeFade =
-                  1.0 - smoothstep(0.72, 1.0, abs(x));
+              vec3 color = mix(
+                blue,
+                silver,
+                centerMix
+              );
 
-                float alpha =
-                  clamp(intensity * edgeFade, 0.0, 1.0);
+              color = mix(
+                color,
+                white,
+                clamp(core * 1.5, 0.0, 1.0)
+              );
 
-                gl_FragColor = vec4(color, alpha);
-              }
-            `}
-          />
-        </mesh>
-      </Billboard>
+              color *= intensity;
 
+              // Desaparecimento gradual nas pontas
+              float edgeFade =
+                1.0 - smoothstep(0.78, 1.0, abs(x));
+
+              float alpha = clamp(
+                intensity * 0.55 * edgeFade,
+                0.0,
+                0.95
+              );
+
+              gl_FragColor = vec4(color, alpha);
+            }
+          `}
+        />
+      </mesh>
     </group>
   );
 }
+
 // ============================================
 // 2. ATMOSFERA PLANETÁRIA
 // ============================================
