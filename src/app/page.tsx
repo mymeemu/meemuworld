@@ -791,14 +791,22 @@ function SpaceScene({
 }) {
   return (
     <>
+      <ambientLight intensity={1.2} />
+
+      <directionalLight
+        position={[30, 80, 20]}
+        intensity={2}
+        color="#dceaff"
+      />
+
       <directionalLight
         position={[120, 40, -160]}
-        intensity={2.8}
+        intensity={1.8}
         color="#fff1d6"
       />
 
       <ambientLight
-        intensity={0.35}
+        intensity={0.2}
         color="#426aab"
       />
 
@@ -807,20 +815,21 @@ function SpaceScene({
       />
 
       <MilkyWayBackground />
-      <Suspense fallback={null}>
-      <MeemuPlanetModel />
-      <MeemuGalaxyModel />
-      </Suspense>
-      
-     <Sparkles
-  count={180}
-  scale={[450, 280, 550]}
-  position={[0, 45, -180]}
-  size={2}
-  speed={0.12}
-  color="#b9ddff"
-/>
 
+      <Suspense fallback={null}>
+        <MeemuPlanetModel />
+        <MeemuGalaxyModel />
+      </Suspense>
+
+      <Sparkles
+        count={180}
+        scale={[450, 280, 550]}
+        position={[0, 45, -180]}
+        size={2}
+        speed={0.12}
+        color="#b9ddff"
+      />
+      
       <CinematicSun />
       <Earth />
       <ThreeMoons />
