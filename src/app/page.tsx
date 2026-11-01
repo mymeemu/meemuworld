@@ -1,196 +1,607 @@
+
 'use client';
 
 import React, { useState, useRef } from 'react';
 import { Canvas, useFrame } from '@react-three/fiber';
-import { OrbitControls, useTexture, Sparkles } from '@react-three/drei';
+import {
+  OrbitControls,
+  useTexture,
+  Sparkles,
+} from '@react-three/drei';
+
+import {
+  EffectComposer,
+  Bloom,
+  Vignette,
+} from '@react-three/postprocessing';
+
 import * as THREE from 'three';
 
-// Sol Realista com Facho de Luz Ofuscante (Lens Flare / Glow Cinematográfico)
+// ============================================
+// 1. SOL CINEMATOGRÁFICO
+// ============================================
+
 function CinematicSun() {
   const sunRef = useRef<THREE.Mesh>(null!);
+  const coronaRef = useRef<THREE.Group>(null!);
+
   const [sunTexture] = useTexture(['/8k_sun.jpg']);
 
-  useFrame((_, delta) => {
+  sunTexture.colorSpace = THREE.SRGBColorSpace;
+
+  useFrame((state, delta) => {
     if (sunRef.current) {
-      sunRef.current.rotation.y += delta * 0.03;
+      sunRef.current.rotation.y += delta * 0.025;
+    }
+
+    if (coronaRef.current) {
+      coronaRef.current.rotation.y += delta * 0.008;
+      coronaRef.current.rotation.z =
+        Math.sin(state.clock.elapsedTime * 0.15) * 0.025;
     }
   });
 
   return (
     <group position={[120, 40, -160]}>
-      {/* Luz Direcional Principal Super Forte (Simula o Sol cegando a cena) */}
-      <directionalLight 
-        castShadow 
-        intensity={5.0} 
-        color="#ffffff" 
-        position={[0, 0, 0]}
-        shadow-mapSize-width={2048} 
-        shadow-mapSize-height={2048}
-      />
 
-      {/* Núcleo do Sol */}
+      {/* Superfície solar */}
+
       <mesh ref={sunRef}>
-        <sphereGeometry args={[14, 32, 32]} />
-        <meshBasicMaterial map={sunTexture} />
+        <sphereGeometry args={[14, 48, 48]} />
+
+        <meshBasicMaterial
+          map={sunTexture}
+          toneMapped={false}
+        />
       </mesh>
 
-      {/* Camadas de Facho de Luz / Glow Extremo (Efeito Holofote Estelar) */}
+      {/* Corona solar */}
+
+      <group ref={coronaRef}>
+
+        <mesh scale={1.25}>
+          <sphereGeometry args={[14, 40, 40]} />
+
+          <meshBasicMaterial
+            color="#fff1c2"
+            transparent
+            opacity={0.22}
+            side={THREE.BackSide}
+            blending={THREE.AdditiveBlending}
+            depthWrite={false}
+            toneMapped={false}
+          />
+        </mesh>
+
+        <mesh scale={1.55}>
+          <sphereGeometry args={[14, 40, 40]} />
+
+          <meshBasicMaterial
+            color="#ff9b42"
+            transparent
+            opacity={0.16}
+            side={THREE.BackSide}
+            blending={THREE.AdditiveBlending}
+            depthWrite={false}
+            toneMapped={false}
+          />
+        </mesh>
+
+        <mesh scale={2}>
+          <sphereGeometry args={[14, 40, 40]} />
+
+          <meshBasicMaterial
+            color="#ff5e1a"
+            transparent
+            opacity={0.07}
+            side={THREE.BackSide}
+            blending={THREE.AdditiveBlending}
+            depthWrite={false}
+            toneMapped={false}
+          />
+        </mesh>
+
+      </group>
+
+      {/* Halo externo */}
+
       <mesh>
-        <sphereGeometry args={[18, 32, 32]} />
-        <meshBasicMaterial color="#ffedd5" transparent opacity={0.5} side={THREE.BackSide} blending={THREE.AdditiveBlending} />
+        <sphereGeometry args={[42, 32, 32]} />
+
+        <meshBasicMaterial
+          color="#ff7b28"
+          transparent
+          opacity={0.035}
+          side={THREE.BackSide}
+          blending={THREE.AdditiveBlending}
+          depthWrite={false}
+          toneMapped={false}
+        />
       </mesh>
-      <mesh>
-        <sphereGeometry args={[26, 32, 32]} />
-        <meshBasicMaterial color="#f97316" transparent opacity={0.3} side={THREE.BackSide} blending={THREE.AdditiveBlending} />
-      </mesh>
-      <mesh>
-        <sphereGeometry args={[40, 32, 32]} />
-        <meshBasicMaterial color="#ea580c" transparent opacity={0.12} side={THREE.BackSide} blending={THREE.AdditiveBlending} />
-      </mesh>
+
     </group>
   );
 }
 
-// Planeta Terra com Iluminação Frontal Correta (Acabando com o lado escuro)
-function IlluminatedPlanet() {
-  const planetRef = useRef<THREE.Mesh>(null!);
-  const ringRef = useRef<THREE.Mesh>(null!);
+// ============================================
+// 2. ATMOSFERA PLANETÁRIA
+// ============================================
 
-  const [earthTexture, ringTexture] = useTexture([
-    '/8k_earth_daymap.jpg',
-    '/2k_saturn_ring_alpha.png'
-  ]);
-
-  useFrame((_, delta) => {
-    if (planetRef.current) planetRef.current.rotation.y += delta * 0.01;
-    if (ringRef.current) ringRef.current.rotation.z += delta * 0.003;
-  });
-
+function Atmosphere({
+  radius,
+  color,
+}: {
+  radius: number;
+  color: string;
+}) {
   return (
-    <group position={[-50, 30, -120]} rotation={[0.2, 0.4, -0.1]}>
-      {/* Planeta Principal (Agora totalmente iluminado pela frente) */}
-      <mesh ref={planetRef} castShadow receiveShadow>
-        <sphereGeometry args={[35, 64, 64]} />
-        <meshStandardMaterial 
-          map={earthTexture} 
-          roughness={0.6} 
-          metalness={0.15}
-        />
-      </mesh>
+    <mesh scale={radius}>
+      <sphereGeometry args={[1, 48, 48]} />
 
-      {/* Anéis Elegantes */}
-      <mesh ref={ringRef} rotation={[Math.PI / 2.3, 0, 0]}>
-        <ringGeometry args={[45, 80, 64]} />
-        <meshStandardMaterial 
-          map={ringTexture} 
-          side={THREE.DoubleSide} 
-          transparent={true}
-          roughness={0.2}
-        />
-      </mesh>
-    </group>
-  );
-}
+      <shaderMaterial
+        transparent
+        depthWrite={false}
+        blending={THREE.AdditiveBlending}
+        side={THREE.BackSide}
+        toneMapped={false}
+        uniforms={{
+          uColor: {
+            value: new THREE.Color(color),
+          },
+        }}
+        vertexShader={`
+          varying vec3 vNormal;
+          varying vec3 vViewPosition;
 
-// Fundo do Universo (Via Láctea)
-function MilkyWayBackground() {
-  const [bgTexture] = useTexture(['/8k_stars_milky_way.jpg']);
-  bgTexture.colorSpace = THREE.SRGBColorSpace;
+          void main() {
+            vec4 mvPosition = modelViewMatrix * vec4(position, 1.0);
 
-  return (
-    <mesh position={[0, 0, 0]}>
-      <sphereGeometry args={[500, 64, 64]} />
-      <meshBasicMaterial map={bgTexture} side={THREE.BackSide} />
+            vNormal = normalize(normalMatrix * normal);
+            vViewPosition = -mvPosition.xyz;
+
+            gl_Position = projectionMatrix * mvPosition;
+          }
+        `}
+        fragmentShader={`
+          uniform vec3 uColor;
+
+          varying vec3 vNormal;
+          varying vec3 vViewPosition;
+
+          void main() {
+            vec3 viewDir = normalize(vViewPosition);
+
+            float fresnel = pow(
+              1.0 - max(dot(normalize(vNormal), viewDir), 0.0),
+              3.0
+            );
+
+            float alpha = fresnel * 0.75;
+
+            gl_FragColor = vec4(uColor, alpha);
+          }
+        `}
+      />
     </mesh>
   );
 }
 
-// Avatar do Jogador na Armaria
-function PlayerAvatar({ isCustomizing }: { isCustomizing: boolean }) {
+// ============================================
+// 3. TERRA
+// ============================================
+
+function Earth() {
+  const planetRef = useRef<THREE.Mesh>(null!);
+
+  const [earthTexture] = useTexture([
+    '/8k_earth_daymap.jpg',
+  ]);
+
+  earthTexture.colorSpace = THREE.SRGBColorSpace;
+
+  useFrame((_, delta) => {
+    if (planetRef.current) {
+      planetRef.current.rotation.y += delta * 0.012;
+    }
+  });
+
+  return (
+    <group
+      position={[-50, 30, -120]}
+      rotation={[0.2, 0.4, -0.1]}
+    >
+
+      {/* Atmosfera */}
+
+      <Atmosphere
+        radius={1.09}
+        color="#3b9dff"
+      />
+
+      {/* Superfície */}
+
+      <mesh ref={planetRef}>
+        <sphereGeometry args={[35, 64, 64]} />
+
+        <meshStandardMaterial
+          map={earthTexture}
+          roughness={0.8}
+          metalness={0}
+        />
+      </mesh>
+
+    </group>
+  );
+}
+
+// ============================================
+// 4. PLANETA COM ANÉIS
+// ============================================
+
+function Saturn() {
+  const planetRef = useRef<THREE.Mesh>(null!);
+  const ringRef = useRef<THREE.Mesh>(null!);
+
+  const [ringTexture] = useTexture([
+    '/2k_saturn_ring_alpha.png',
+  ]);
+
+  useFrame((_, delta) => {
+    if (planetRef.current) {
+      planetRef.current.rotation.y += delta * 0.008;
+    }
+
+    if (ringRef.current) {
+      ringRef.current.rotation.z += delta * 0.002;
+    }
+  });
+
+  return (
+    <group
+      position={[65, -8, -190]}
+      rotation={[0.3, 0.2, -0.15]}
+    >
+
+      <Atmosphere
+        radius={1.12}
+        color="#ffb86b"
+      />
+
+      {/* Corpo do planeta */}
+
+      <mesh ref={planetRef}>
+        <sphereGeometry args={[19, 48, 48]} />
+
+        <meshStandardMaterial
+          color="#c99565"
+          roughness={0.85}
+          metalness={0.05}
+        />
+      </mesh>
+
+      {/* Anéis */}
+
+      <mesh
+        ref={ringRef}
+        rotation={[Math.PI / 2.3, 0, 0]}
+      >
+        <ringGeometry args={[25, 43, 96]} />
+
+        <meshStandardMaterial
+          map={ringTexture}
+          color="#d9bd99"
+          side={THREE.DoubleSide}
+          transparent
+          opacity={0.85}
+          roughness={0.9}
+          metalness={0.1}
+          depthWrite={false}
+        />
+      </mesh>
+
+    </group>
+  );
+}
+
+// ============================================
+// 5. FUNDO ESPACIAL
+// ============================================
+
+function MilkyWayBackground() {
+  const [bgTexture] = useTexture([
+    '/8k_stars_milky_way.jpg',
+  ]);
+
+  bgTexture.colorSpace = THREE.SRGBColorSpace;
+
+  return (
+    <mesh>
+      <sphereGeometry args={[500, 48, 48]} />
+
+      <meshBasicMaterial
+        map={bgTexture}
+        side={THREE.BackSide}
+        toneMapped={false}
+      />
+    </mesh>
+  );
+}
+
+// ============================================
+// 6. AVATAR
+// ============================================
+
+function PlayerAvatar({
+  isCustomizing,
+}: {
+  isCustomizing: boolean;
+}) {
   const avatarRef = useRef<THREE.Group>(null!);
 
-  useFrame((state) => {
-    if (isCustomizing && avatarRef.current) {
-      avatarRef.current.rotation.y = state.clock.getElapsedTime() * 0.3;
+  useFrame((state, delta) => {
+    if (avatarRef.current) {
+      if (isCustomizing) {
+        avatarRef.current.rotation.y += delta * 0.3;
+      } else {
+        avatarRef.current.rotation.y = THREE.MathUtils.damp(
+          avatarRef.current.rotation.y,
+          0,
+          4,
+          delta
+        );
+      }
+
+      avatarRef.current.position.y =
+        Math.sin(state.clock.elapsedTime * 1.5) * 0.035;
     }
   });
 
   return (
     <group ref={avatarRef} position={[0, 0, 0]}>
-      <mesh position={[0, 1, 0]} castShadow receiveShadow>
+
+      {/* Corpo */}
+
+      <mesh position={[0, 0.85, 0]}>
         <capsuleGeometry args={[0.4, 1.1, 4, 16]} />
-        <meshStandardMaterial 
-          color={isCustomizing ? '#0284c7' : '#94a3b8'} 
-          roughness={0.25} 
-          metalness={0.8} 
+
+        <meshStandardMaterial
+          color={isCustomizing ? '#0284c7' : '#94a3b8'}
+          roughness={0.3}
+          metalness={0.65}
         />
       </mesh>
-      <mesh position={[0, 1.65, 0.1]} castShadow>
-        <sphereGeometry args={[0.22, 32, 32]} />
-        <meshStandardMaterial color="#090d16" roughness={0.1} metalness={0.95} />
+
+      {/* Capacete */}
+
+      <mesh position={[0, 1.65, 0.08]}>
+        <sphereGeometry args={[0.28, 32, 32]} />
+
+        <meshStandardMaterial
+          color="#111827"
+          roughness={0.15}
+          metalness={0.9}
+        />
       </mesh>
+
+      {/* Visor */}
+
+      <mesh position={[0, 1.67, 0.29]}>
+        <sphereGeometry
+          args={[0.17, 32, 32, 0, Math.PI * 2, 0, Math.PI / 2]}
+        />
+
+        <meshBasicMaterial
+          color="#38bdf8"
+          transparent
+          opacity={0.85}
+          toneMapped={false}
+        />
+      </mesh>
+
     </group>
   );
 }
+
+// ============================================
+// 7. CENÁRIO COMPLETO
+// ============================================
+
+function SpaceScene({
+  isCustomizing,
+}: {
+  isCustomizing: boolean;
+}) {
+  return (
+    <>
+
+      {/* Iluminação solar global */}
+
+      <directionalLight
+        position={[120, 40, -160]}
+        intensity={2.8}
+        color="#fff1d6"
+      />
+
+      <ambientLight
+        intensity={0.35}
+        color="#426aab"
+      />
+
+      <hemisphereLight
+        args={['#8acbff', '#080b19', 0.65]}
+      />
+
+      {/* Universo */}
+
+      <MilkyWayBackground />
+
+      <Sparkles
+        count={90}
+        scale={250}
+        size={2}
+        speed={0.15}
+        color="#b9ddff"
+      />
+
+      {/* Corpos celestes */}
+
+      <CinematicSun />
+
+      <Earth />
+
+      <Saturn />
+
+      {/* Piso */}
+
+      <mesh
+        rotation={[-Math.PI / 2, 0, 0]}
+        position={[0, -0.05, 0]}
+      >
+        <planeGeometry args={[300, 300]} />
+
+        <meshStandardMaterial
+          color="#05070c"
+          roughness={0.95}
+          metalness={0.1}
+        />
+      </mesh>
+
+      <gridHelper
+        args={[300, 100, '#075985', '#101c30']}
+        position={[0, 0, 0]}
+      />
+
+      {/* Personagem */}
+
+      <PlayerAvatar isCustomizing={isCustomizing} />
+
+      {/* Câmera */}
+
+      <OrbitControls
+        enableDamping
+        dampingFactor={0.06}
+        enableZoom
+        enablePan={false}
+        minDistance={3}
+        maxDistance={100}
+        maxPolarAngle={Math.PI / 2}
+        target={[0, 1, 0]}
+      />
+
+      {/* Pós-processamento cinematográfico */}
+
+      <EffectComposer multisampling={0}>
+
+        <Bloom
+          intensity={1.5}
+          luminanceThreshold={0.25}
+          luminanceSmoothing={0.65}
+          mipmapBlur
+        />
+
+        <Vignette
+          offset={0.2}
+          darkness={0.45}
+        />
+
+      </EffectComposer>
+
+    </>
+  );
+}
+
+// ============================================
+// 8. PÁGINA PRINCIPAL
+// ============================================
 
 export default function GamePage() {
   const [isCustomizing, setIsCustomizing] = useState(true);
 
   return (
-    <main style={{ width: '100vw', height: '100vh', position: 'relative', overflow: 'hidden', backgroundColor: '#010104' }}>
-      {/* UI / HUD */}
-      <div style={{ position: 'absolute', top: 20, left: 20, zIndex: 10, display: 'flex', gap: '15px', alignItems: 'center' }}>
+    <main
+      style={{
+        width: '100vw',
+        height: '100vh',
+        position: 'relative',
+        overflow: 'hidden',
+        background: '#010104',
+      }}
+    >
+
+      {/* HUD */}
+
+      <div
+        style={{
+          position: 'absolute',
+          top: 20,
+          left: 20,
+          zIndex: 10,
+          display: 'flex',
+          gap: 15,
+          alignItems: 'center',
+          flexWrap: 'wrap',
+        }}
+      >
+
         <button
           onClick={() => setIsCustomizing(!isCustomizing)}
           style={{
             padding: '12px 24px',
-            backgroundColor: 'rgba(15, 23, 42, 0.85)',
+            background: 'rgba(15,23,42,0.88)',
             color: '#38bdf8',
             border: '1px solid #0284c7',
-            borderRadius: '6px',
+            borderRadius: 8,
             cursor: 'pointer',
             fontWeight: 'bold',
-            backdropFilter: 'blur(8px)',
-            boxShadow: '0 0 20px rgba(56, 189, 248, 0.4)',
+            backdropFilter: 'blur(12px)',
+            boxShadow: '0 0 20px rgba(56,189,248,0.25)',
           }}
         >
-          {isCustomizing ? '🛡️ Modo Exploração FPS' : '⚙️ Personalizar Traje'}
+          {isCustomizing
+            ? '🚀 Explorar Universo'
+            : '⚙️ Personalizar Traje'}
         </button>
-        <span style={{ color: '#94a3b8', fontSize: '13px', fontFamily: 'monospace', letterSpacing: '1px' }}>
-          SISTEMA ESTELAR: {isCustomizing ? 'ARMARIA' : 'SUPERFÍCIE'}
+
+        <span
+          style={{
+            color: '#94a3b8',
+            fontSize: 12,
+            fontFamily: 'monospace',
+            letterSpacing: 1.5,
+          }}
+        >
+          MEEMULAND // {isCustomizing ? 'ARMARIA' : 'EXPLORAÇÃO'}
         </span>
+
       </div>
 
-      {/* Canvas 3D */}
-      <Canvas shadows camera={{ position: isCustomizing ? [0, 1.5, 4] : [0, 1.7, 0], fov: 70 }}>
-        {/* Luz Ambiente para iluminar de leve as áreas de sombra */}
-        <ambientLight intensity={0.5} color="#38bdf8" />
+      {/* RENDERIZAÇÃO 3D */}
 
-        {/* Fundo e Partículas */}
-        <MilkyWayBackground />
-        <Sparkles count={150} scale={[30, 15, 30]} size={2.5} speed={0.3} color="#38bdf8" />
+      <Canvas
+        shadows={false}
+        dpr={[1, 1.5]}
+        camera={{
+          position: [0, 2.2, 9],
+          fov: 60,
+          near: 0.1,
+          far: 1200,
+        }}
+        gl={{
+          antialias: true,
+          powerPreference: 'high-performance',
+          alpha: false,
+        }}
+        style={{
+          background: '#010104',
+        }}
+      >
 
-        {/* Sol com Facho de Luz Intenso e Planeta Texturizado Corretamente */}
-        <CinematicSun />
-        <IlluminatedPlanet />
-
-        {/* Chão e Grid */}
-        <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0, 0]} receiveShadow>
-          <planeGeometry args={[300, 300]} />
-          <meshStandardMaterial color="#05070c" roughness={0.9} metalness={0.1} />
-        </mesh>
-        <gridHelper args={[300, 150, '#0284c7', '#0f172a']} position={[0, 0.01, 0]} />
-
-        {/* Avatar */}
-        <PlayerAvatar isCustomizing={isCustomizing} />
-
-        {/* Controlos */}
-        <OrbitControls 
-          enableZoom={true} 
-          target={[0, 1, 0]} 
-          maxPolarAngle={Math.PI / 2} 
+        <SpaceScene
+          isCustomizing={isCustomizing}
         />
+
       </Canvas>
+
     </main>
   );
 }
