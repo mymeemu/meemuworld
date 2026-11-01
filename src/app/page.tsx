@@ -707,14 +707,14 @@ function MeemuPlanetModel() {
   );
 }
 
-// GALÁXIA 3D
+// GALÁXIA 3D — ESTRUTURA VERTICAL AO FUNDO
 function MeemuGalaxyModel() {
   return (
     <NormalizedGLB
       url="/models/galaxy.glb"
-      position={[0, 35, -430]}
+      position={[-220, 85, -420]}
       targetSize={300}
-      rotation={[0.25, 0, 0]}
+      rotation={[Math.PI / 2, 0, 0]}
     />
   );
 }
@@ -812,13 +812,14 @@ function SpaceScene({
       <MeemuGalaxyModel />
       </Suspense>
       
-      <Sparkles
-        count={55}
-        scale={250}
-        size={2}
-        speed={0.15}
-        color="#b9ddff"
-      />
+     <Sparkles
+  count={180}
+  scale={[450, 280, 550]}
+  position={[0, 45, -180]}
+  size={2}
+  speed={0.12}
+  color="#b9ddff"
+/>
 
       <CinematicSun />
       <Earth />
