@@ -1,7 +1,19 @@
 'use client';
 
-import React, { Suspense, useMemo, useState, useRef } from 'react';
-import { Canvas, useFrame } from '@react-three/fiber';
+import React, {
+  Suspense,
+  useMemo,
+  useState,
+  useRef,
+  useEffect,
+} from 'react';
+
+import {
+  Canvas,
+  useFrame,
+  useThree,
+} from '@react-three/fiber';
+
 import {
   OrbitControls,
   useTexture,
@@ -260,7 +272,7 @@ function Atmosphere({
 }
 
 // ============================================
-// 3. PLANETA MEZUS N1 VZERO
+// 3. PLANETA NEXUS
 // ============================================
 
 function Earth() {
@@ -477,7 +489,7 @@ function Saturn() {
 }
 
 // ============================================
-// 5. LUAS LUMINESCENTES CINEMATOGRÁFICAS (NO TOPO DO CÉU)
+// 5. LUAS LUMINESCENTES
 // ============================================
 
 function CelestialLuminousMoon({
@@ -489,7 +501,6 @@ function CelestialLuminousMoon({
 }) {
   return (
     <group position={position} scale={scale}>
-      {/* Halo de luz difusa/holofote estelar suave ao redor */}
       <mesh>
         <planeGeometry args={[26, 26]} />
         <shaderMaterial
@@ -499,24 +510,34 @@ function CelestialLuminousMoon({
           toneMapped={false}
           vertexShader={`
             varying vec2 vUv;
+
             void main() {
               vUv = uv;
-              gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+              gl_Position =
+                projectionMatrix *
+                modelViewMatrix *
+                vec4(position, 1.0);
             }
           `}
           fragmentShader={`
             varying vec2 vUv;
+
             void main() {
               float d = length(vUv - vec2(0.5));
               float glow = exp(-d * 6.5);
-              vec3 c = mix(vec3(0.1, 0.85, 1.0), vec3(0.8, 0.98, 1.0), glow);
+
+              vec3 c = mix(
+                vec3(0.1, 0.85, 1.0),
+                vec3(0.8, 0.98, 1.0),
+                glow
+              );
+
               gl_FragColor = vec4(c * glow * 1.2, glow * 0.85);
             }
           `}
         />
       </mesh>
 
-      {/* Núcleo brilhante da Lua com atmosfera fina */}
       <mesh>
         <sphereGeometry args={[3.2, 48, 48]} />
         <meshBasicMaterial
@@ -524,7 +545,7 @@ function CelestialLuminousMoon({
           toneMapped={false}
         />
       </mesh>
-      
+
       <Atmosphere radius={1.12} color="#00e5ff" />
     </group>
   );
@@ -532,31 +553,24 @@ function CelestialLuminousMoon({
 
 function ThreeMoons() {
   return (
-    // Conjunto centralizado no alto e distante do avatar
     <group position={[0, 82, -270]}>
-
-      {/* Lua central superior */}
       <CelestialLuminousMoon
         position={[0, 15, 0]}
         scale={1.2}
       />
 
-      {/* Lua inferior esquerda */}
       <CelestialLuminousMoon
         position={[-24, 0, 0]}
         scale={0.9}
       />
 
-      {/* Lua inferior direita */}
       <CelestialLuminousMoon
         position={[24, 0, 0]}
         scale={0.9}
       />
-
     </group>
   );
 }
-
 
 // ============================================
 // 6. FUNDO ESPACIAL
@@ -583,33 +597,119 @@ function MilkyWayBackground() {
 }
 
 // ============================================
-// 7. AVATAR
+// 7. AVATAR COM MOVIMENTAÇÃO WASD
 // ============================================
 
 function PlayerAvatar({
   isCustomizing,
+  controlsRef,
 }: {
   isCustomizing: boolean;
+  controlsRef: React.RefObject<any>;
 }) {
   const avatarRef = useRef<THREE.Group>(null!);
+  const keys = useRef<Set<string>>(new Set());
+
+  const { camera } = useThree();
+
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      const key = event.key.toLowerCase();
+
+      if (
+        ['w', 'a', 's', 'd', 'arrowup', 'arrowdown', 'arrowleft', 'arrowright'].includes(key)
+      ) {
+        event.preventDefault();
+        keys.current.add(key);
+      }
+    };
+
+    const handleKeyUp = (event: KeyboardEvent) => {
+      keys.current.delete(event.key.toLowerCase());
+    };
+
+    const handleBlur = () => {
+      keys.current.clear();
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    window.addEventListener('keyup', handleKeyUp);
+    window.addEventListener('blur', handleBlur);
+
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+      window.removeEventListener('keyup', handleKeyUp);
+      window.removeEventListener('blur', handleBlur);
+    };
+  }, []);
 
   useFrame((state, delta) => {
-    if (avatarRef.current) {
-      if (isCustomizing) {
-        avatarRef.current.rotation.y += delta * 0.3;
-      } else {
-        avatarRef.current.rotation.y =
-          THREE.MathUtils.damp(
-            avatarRef.current.rotation.y,
-            0,
-            4,
-            delta
-          );
-      }
+    if (!avatarRef.current) return;
 
-      avatarRef.current.position.y =
-        Math.sin(state.clock.elapsedTime * 1.5) * 0.035;
+    if (isCustomizing) {
+      avatarRef.current.rotation.y += delta * 0.3;
+    } else {
+      const keySet = keys.current;
+
+      const forwardInput =
+        (keySet.has('w') || keySet.has('arrowup') ? 1 : 0) -
+        (keySet.has('s') || keySet.has('arrowdown') ? 1 : 0);
+
+      const sideInput =
+        (keySet.has('d') || keySet.has('arrowright') ? 1 : 0) -
+        (keySet.has('a') || keySet.has('arrowleft') ? 1 : 0);
+
+      if (forwardInput !== 0 || sideInput !== 0) {
+        const forward = new THREE.Vector3();
+
+        camera.getWorldDirection(forward);
+        forward.y = 0;
+        forward.normalize();
+
+        const right = new THREE.Vector3()
+          .crossVectors(forward, camera.up)
+          .normalize();
+
+        const movement = new THREE.Vector3()
+          .addScaledVector(forward, forwardInput)
+          .addScaledVector(right, sideInput);
+
+        movement.normalize();
+        movement.multiplyScalar(8 * delta);
+
+        avatarRef.current.position.x += movement.x;
+        avatarRef.current.position.z += movement.z;
+
+        camera.position.add(movement);
+
+        if (controlsRef.current) {
+          controlsRef.current.target.add(movement);
+          controlsRef.current.update();
+        }
+
+        const targetRotation = Math.atan2(
+          movement.x,
+          movement.z
+        );
+
+        avatarRef.current.rotation.y = THREE.MathUtils.damp(
+          avatarRef.current.rotation.y,
+          targetRotation,
+          10,
+          delta
+        );
+      } else {
+        avatarRef.current.rotation.y = THREE.MathUtils.damp(
+          avatarRef.current.rotation.y,
+          0,
+          4,
+          delta
+        );
+      }
     }
+
+    avatarRef.current.position.y =
+      Math.sin(state.clock.elapsedTime * 1.5) * 0.035;
   });
 
   return (
@@ -649,8 +749,9 @@ function PlayerAvatar({
     </group>
   );
 }
+
 // ============================================
-// MODELOS 3D GLB — MEEMU WORLD
+// 8. MODELOS 3D GLB — MEEMU WORLD
 // ============================================
 
 function NormalizedGLB({
@@ -695,7 +796,6 @@ function NormalizedGLB({
   );
 }
 
-// PLANETA 3D
 function MeemuPlanetModel() {
   return (
     <NormalizedGLB
@@ -707,7 +807,6 @@ function MeemuPlanetModel() {
   );
 }
 
-// GALÁXIA 3D — ESTRUTURA VERTICAL AO FUNDO
 function MeemuGalaxyModel() {
   return (
     <NormalizedGLB
@@ -718,8 +817,9 @@ function MeemuGalaxyModel() {
     />
   );
 }
+
 // ============================================
-// CHÃO PBR — MEEMU WORLD
+// 9. CHÃO PBR — MEEMU WORLD
 // ============================================
 
 function TexturedGround() {
@@ -781,16 +881,43 @@ function TexturedGround() {
   );
 }
 
+// ============================================
+// 10. ROCHAS PBR — MEEMU WORLD
+// ============================================
+
 function AlienRocks() {
-  const rockMaterial = (
+  const [
+    rockColor,
+    rockARM,
+    rockNormal,
+  ] = useTexture([
+    '/textures/rocks/coast_rocks_03_diff_1k.webp',
+    '/textures/rocks/coast_rocks_03_arm_1k.webp',
+    '/textures/rocks/coast_rocks_03_nor_gl_1k.webp',
+  ]);
+
+  rockColor.colorSpace = THREE.SRGBColorSpace;
+
+  [rockColor, rockARM, rockNormal].forEach((texture) => {
+    texture.wrapS = THREE.RepeatWrapping;
+    texture.wrapT = THREE.RepeatWrapping;
+    texture.repeat.set(1.5, 1.5);
+    texture.anisotropy = 8;
+    texture.needsUpdate = true;
+  });
+
+  const rockMaterial = () => (
     <meshStandardMaterial
-      color="#343044"
-      roughness={0.88}
-      metalness={0.18}
+      map={rockColor}
+      normalMap={rockNormal}
+      roughnessMap={rockARM}
+      metalnessMap={rockARM}
+      roughness={0.95}
+      metalness={0.12}
     />
   );
 
-  const crystalMaterial = (
+  const crystalMaterial = () => (
     <meshStandardMaterial
       color="#54d9ed"
       emissive="#087dba"
@@ -802,63 +929,142 @@ function AlienRocks() {
 
   return (
     <group>
-      
       {/* AGRUPAMENTO 1 */}
       <group position={[-16, 0, -13]}>
         <mesh position={[0, 0.65, 0]} scale={[1.5, 0.8, 1.2]}>
-          <dodecahedronGeometry args={[1, 0]} />
-          {rockMaterial}
+          <dodecahedronGeometry args={[1, 1]} />
+          {rockMaterial()}
         </mesh>
 
         <mesh position={[1.4, 0.35, 0.5]} scale={[0.8, 0.5, 0.7]}>
-          <icosahedronGeometry args={[1, 0]} />
-          {rockMaterial}
+          <icosahedronGeometry args={[1, 1]} />
+          {rockMaterial()}
         </mesh>
 
         <mesh position={[-0.5, 1.1, 0.2]} rotation={[0, 0, -0.15]}>
           <octahedronGeometry args={[0.9, 0]} />
-          {crystalMaterial}
+          {crystalMaterial()}
         </mesh>
 
         <mesh position={[0.8, 0.75, -0.7]} scale={0.55}>
           <octahedronGeometry args={[1, 0]} />
-          {crystalMaterial}
+          {crystalMaterial()}
         </mesh>
       </group>
 
       {/* AGRUPAMENTO 2 */}
       <group position={[19, 0, -17]} rotation={[0, 1.2, 0]}>
         <mesh position={[0, 0.5, 0]} scale={[1.3, 0.65, 1]}>
-          <dodecahedronGeometry args={[1, 0]} />
-          {rockMaterial}
+          <dodecahedronGeometry args={[1, 1]} />
+          {rockMaterial()}
         </mesh>
 
         <mesh position={[-1, 0.35, 0.7]} scale={0.65}>
-          <icosahedronGeometry args={[1, 0]} />
-          {rockMaterial}
+          <icosahedronGeometry args={[1, 1]} />
+          {rockMaterial()}
         </mesh>
 
         <mesh position={[0.3, 1.2, 0.2]} rotation={[0, 0, 0.2]}>
           <octahedronGeometry args={[1.1, 0]} />
-          {crystalMaterial}
+          {crystalMaterial()}
         </mesh>
       </group>
 
       {/* AGRUPAMENTO 3 */}
       <group position={[-22, 0, 20]} rotation={[0, -0.7, 0]}>
         <mesh position={[0, 0.55, 0]} scale={[1.2, 0.7, 1.3]}>
-          <dodecahedronGeometry args={[1, 0]} />
-          {rockMaterial}
+          <dodecahedronGeometry args={[1, 1]} />
+          {rockMaterial()}
         </mesh>
 
         <mesh position={[1, 0.9, 0]} scale={0.7}>
           <octahedronGeometry args={[1, 0]} />
-          {crystalMaterial}
+          {crystalMaterial()}
         </mesh>
 
         <mesh position={[-1, 0.6, -0.5]} scale={0.55}>
           <octahedronGeometry args={[1, 0]} />
-          {crystalMaterial}
+          {crystalMaterial()}
+        </mesh>
+      </group>
+
+      {/* AGRUPAMENTO 4 */}
+      <group position={[28, 0, 14]} rotation={[0, 0.8, 0]}>
+        <mesh position={[0, 0.55, 0]} scale={[1.7, 0.8, 1.3]}>
+          <dodecahedronGeometry args={[1, 1]} />
+          {rockMaterial()}
+        </mesh>
+
+        <mesh position={[1.3, 0.35, -0.5]} scale={[0.9, 0.55, 0.8]}>
+          <icosahedronGeometry args={[1, 1]} />
+          {rockMaterial()}
+        </mesh>
+
+        <mesh position={[-0.6, 1.05, 0.2]}>
+          <octahedronGeometry args={[0.85, 0]} />
+          {crystalMaterial()}
+        </mesh>
+      </group>
+
+      {/* AGRUPAMENTO 5 */}
+      <group position={[-35, 0, -2]} rotation={[0, -0.4, 0]}>
+        <mesh position={[0, 0.6, 0]} scale={[1.5, 0.75, 1.1]}>
+          <dodecahedronGeometry args={[1, 1]} />
+          {rockMaterial()}
+        </mesh>
+
+        <mesh position={[-1.2, 0.35, 0.5]} scale={0.7}>
+          <icosahedronGeometry args={[1, 1]} />
+          {rockMaterial()}
+        </mesh>
+      </group>
+
+      {/* AGRUPAMENTO 6 */}
+      <group position={[5, 0, 32]} rotation={[0, 1.5, 0]}>
+        <mesh position={[0, 0.55, 0]} scale={[1.4, 0.75, 1.2]}>
+          <dodecahedronGeometry args={[1, 1]} />
+          {rockMaterial()}
+        </mesh>
+
+        <mesh position={[1, 0.35, 0.7]} scale={0.75}>
+          <icosahedronGeometry args={[1, 1]} />
+          {rockMaterial()}
+        </mesh>
+
+        <mesh position={[-0.5, 1, 0]}>
+          <octahedronGeometry args={[0.9, 0]} />
+          {crystalMaterial()}
+        </mesh>
+      </group>
+
+      {/* AGRUPAMENTO 7 */}
+      <group position={[38, 0, -3]} rotation={[0, -1.1, 0]}>
+        <mesh position={[0, 0.5, 0]} scale={[1.6, 0.7, 1.3]}>
+          <dodecahedronGeometry args={[1, 1]} />
+          {rockMaterial()}
+        </mesh>
+
+        <mesh position={[-1.1, 0.35, -0.5]} scale={0.65}>
+          <icosahedronGeometry args={[1, 1]} />
+          {rockMaterial()}
+        </mesh>
+      </group>
+
+      {/* AGRUPAMENTO 8 */}
+      <group position={[-8, 0, -38]} rotation={[0, 0.5, 0]}>
+        <mesh position={[0, 0.55, 0]} scale={[1.5, 0.8, 1.1]}>
+          <dodecahedronGeometry args={[1, 1]} />
+          {rockMaterial()}
+        </mesh>
+
+        <mesh position={[1.1, 0.35, 0.6]} scale={0.7}>
+          <icosahedronGeometry args={[1, 1]} />
+          {rockMaterial()}
+        </mesh>
+
+        <mesh position={[-0.5, 1.05, 0]}>
+          <octahedronGeometry args={[0.85, 0]} />
+          {crystalMaterial()}
         </mesh>
       </group>
     </group>
@@ -866,7 +1072,7 @@ function AlienRocks() {
 }
 
 // ============================================
-// 8. CENÁRIO COMPLETO
+// 11. CENÁRIO COMPLETO
 // ============================================
 
 function SpaceScene({
@@ -874,6 +1080,8 @@ function SpaceScene({
 }: {
   isCustomizing: boolean;
 }) {
+  const controlsRef = useRef<any>(null);
+
   return (
     <>
       <ambientLight intensity={1.2} />
@@ -899,13 +1107,20 @@ function SpaceScene({
         args={['#8acbff', '#080b19', 0.65]}
       />
 
-      <MilkyWayBackground />
-  
       <Suspense fallback={null}>
-      <MeemuPlanetModel />
-      {/* <MeemuGalaxyModel /> */}
+        <MilkyWayBackground />
+
+        <MeemuPlanetModel />
+
+        {/* <MeemuGalaxyModel /> */}
+
+        <TexturedGround />
+
+        <AlienRocks />
+
+        {/* <Saturn /> */}
       </Suspense>
-      
+
       <Sparkles
         count={180}
         scale={[450, 280, 550]}
@@ -914,18 +1129,18 @@ function SpaceScene({
         speed={0.12}
         color="#b9ddff"
       />
-      
+
       <CinematicSun />
       <Earth />
       <ThreeMoons />
-      <TexturedGround />
-      <AlienRocks />
 
       <PlayerAvatar
         isCustomizing={isCustomizing}
+        controlsRef={controlsRef}
       />
 
       <OrbitControls
+        ref={controlsRef}
         enableDamping
         dampingFactor={0.06}
         enableZoom
@@ -940,7 +1155,7 @@ function SpaceScene({
 }
 
 // ============================================
-// 9. PÁGINA PRINCIPAL
+// 12. PÁGINA PRINCIPAL
 // ============================================
 
 export default function GamePage() {
