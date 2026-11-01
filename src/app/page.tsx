@@ -650,21 +650,16 @@ function FirstPersonArms() {
     return group;
   }, [scene]);
 
-  useFrame(() => {
-    camera.updateMatrixWorld();
+useFrame(() => {
+  if (!groupRef.current) return;
 
-    const position = new THREE.Vector3();
-    const quaternion = new THREE.Quaternion();
+  groupRef.current.position.copy(camera.position);
+  groupRef.current.quaternion.copy(camera.quaternion);
 
-    camera.getWorldPosition(position);
-    camera.getWorldQuaternion(quaternion);
-
-    const offset = new THREE.Vector3(0, -0.30, -0.70);
-    offset.applyQuaternion(quaternion);
-
-    arms.position.copy(position).add(offset);
-    arms.quaternion.copy(quaternion);
-  });
+  // Posicionamento relativo à câmera
+  groupRef.current.translateY(-0.25);
+  groupRef.current.translateZ(-0.35);
+});
 
   return <primitive object={arms} />;
 }
