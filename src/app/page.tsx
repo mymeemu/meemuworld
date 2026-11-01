@@ -613,12 +613,25 @@ function PlayerAvatar({
   const { camera } = useThree();
 
   useEffect(() => {
+    keys.current.clear();
+
+    if (isCustomizing) return;
+
+    const validKeys = [
+      'w',
+      'a',
+      's',
+      'd',
+      'arrowup',
+      'arrowdown',
+      'arrowleft',
+      'arrowright',
+    ];
+
     const handleKeyDown = (event: KeyboardEvent) => {
       const key = event.key.toLowerCase();
 
-      if (
-        ['w', 'a', 's', 'd', 'arrowup', 'arrowdown', 'arrowleft', 'arrowright'].includes(key)
-      ) {
+      if (validKeys.includes(key)) {
         event.preventDefault();
         keys.current.add(key);
       }
@@ -640,15 +653,20 @@ function PlayerAvatar({
       window.removeEventListener('keydown', handleKeyDown);
       window.removeEventListener('keyup', handleKeyUp);
       window.removeEventListener('blur', handleBlur);
+      keys.current.clear();
     };
-  }, []);
+  }, [isCustomizing]);
+
+  const forward = useMemo(() => new THREE.Vector3(), []);
+  const right = useMemo(() => new THREE.Vector3(), []);
+  const movement = useMemo(() => new THREE.Vector3(), []);
 
   useFrame((state, delta) => {
     if (!avatarRef.current) return;
 
-    if (isCustomizing) {
-      avatarRef.current.rotation.y += delta * 0.3;
-    } else {
+    // Sem rotação automática no modo de personalização.
+    // O personagem permanece parado até receber movimento.
+    if (!isCustomizing) {
       const keySet = keys.current;
 
       const forwardInput =
@@ -660,54 +678,67 @@ function PlayerAvatar({
         (keySet.has('a') || keySet.has('arrowleft') ? 1 : 0);
 
       if (forwardInput !== 0 || sideInput !== 0) {
-        const forward = new THREE.Vector3();
-
-        camera.getWorldDirection(forward);
-        forward.y = 0;
-        forward.normalize();
-
-        const right = new THREE.Vector3()
-          .crossVectors(forward, camera.up)
-          .normalize();
-
-        const movement = new THREE.Vector3()
-          .addScaledVector(forward, forwardInput)
-          .addScaledVector(right, sideInput);
-
-        movement.normalize();
-        movement.multiplyScalar(8 * delta);
-
-        avatarRef.current.position.x += movement.x;
-        avatarRef.current.position.z += movement.z;
-
-        camera.position.add(movement);
-
+        // Direção baseada no ponto para onde a câmera olha.
         if (controlsRef.current) {
-          controlsRef.current.target.add(movement);
-          controlsRef.current.update();
+          forward
+            .subVectors(
+              controlsRef.current.target,
+              camera.position
+            );
+        } else {
+          camera.getWorldDirection(forward);
         }
 
-        const targetRotation = Math.atan2(
-          movement.x,
-          movement.z
-        );
+        forward.y = 0;
 
-        avatarRef.current.rotation.y = THREE.MathUtils.damp(
-          avatarRef.current.rotation.y,
-          targetRotation,
-          10,
-          delta
-        );
-      } else {
-        avatarRef.current.rotation.y = THREE.MathUtils.damp(
-          avatarRef.current.rotation.y,
-          0,
-          4,
-          delta
-        );
+        if (forward.lengthSq() > 0) {
+          forward.normalize();
+        }
+
+        // Direita relativa à câmera.
+        right.crossVectors(forward, new THREE.Vector3(0, 1, 0));
+        right.normalize();
+
+        movement.set(0, 0, 0);
+        movement.addScaledVector(forward, forwardInput);
+        movement.addScaledVector(right, sideInput);
+
+        if (movement.lengthSq() > 0) {
+          movement.normalize();
+
+          // Velocidade do personagem.
+          const speed = 8;
+          movement.multiplyScalar(speed * Math.min(delta, 0.05));
+
+          // Move o personagem.
+          avatarRef.current.position.x += movement.x;
+          avatarRef.current.position.z += movement.z;
+
+          // A câmera acompanha o personagem sem girar ao redor dele.
+          camera.position.add(movement);
+
+          if (controlsRef.current) {
+            controlsRef.current.target.add(movement);
+            controlsRef.current.update();
+          }
+
+          // O personagem olha para a direção do deslocamento.
+          const targetRotation = Math.atan2(
+            movement.x,
+            movement.z
+          );
+
+          avatarRef.current.rotation.y = THREE.MathUtils.damp(
+            avatarRef.current.rotation.y,
+            targetRotation,
+            12,
+            delta
+          );
+        }
       }
     }
 
+    // Pequena animação vertical, sem rotação automática.
     avatarRef.current.position.y =
       Math.sin(state.clock.elapsedTime * 1.5) * 0.035;
   });
@@ -882,38 +913,15 @@ function TexturedGround() {
 }
 
 // ============================================
-// 10. ROCHAS PBR — MEEMU WORLD
+// 10. ROCHAS — MEEMU WORLD
 // ============================================
 
 function AlienRocks() {
-  const [
-    rockColor,
-    rockARM,
-    rockNormal,
-  ] = useTexture([
-    '/textures/rocks/coast_rocks_03_diff_1k.webp',
-    '/textures/rocks/coast_rocks_03_arm_1k.webp',
-    '/textures/rocks/coast_rocks_03_nor_gl_1k.webp',
-  ]);
-
-  rockColor.colorSpace = THREE.SRGBColorSpace;
-
-  [rockColor, rockARM, rockNormal].forEach((texture) => {
-    texture.wrapS = THREE.RepeatWrapping;
-    texture.wrapT = THREE.RepeatWrapping;
-    texture.repeat.set(1.5, 1.5);
-    texture.anisotropy = 8;
-    texture.needsUpdate = true;
-  });
-
   const rockMaterial = () => (
     <meshStandardMaterial
-      map={rockColor}
-      normalMap={rockNormal}
-      roughnessMap={rockARM}
-      metalnessMap={rockARM}
-      roughness={0.95}
-      metalness={0.12}
+      color="#514d59"
+      roughness={0.92}
+      metalness={0.08}
     />
   );
 
@@ -1070,7 +1078,6 @@ function AlienRocks() {
     </group>
   );
 }
-
 // ============================================
 // 11. CENÁRIO COMPLETO
 // ============================================
