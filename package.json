@@ -1,3 +1,4 @@
+
 {
   "name": "jogo-espacial-fps",
   "version": "0.1.0",
@@ -11,6 +12,8 @@
   "dependencies": {
     "@react-three/drei": "^9.105.0",
     "@react-three/fiber": "^8.16.8",
+    "@react-three/postprocessing": "^2.19.1",
+    "postprocessing": "^6.37.8",
     "lucide-react": "^0.378.0",
     "next": "^14.2.3",
     "react": "^18",
