@@ -834,34 +834,91 @@ function TexturedGround() {
     </mesh>
   );
 }
-// ============================================
-// 10. ROCHAS 3D — MEEMU WORLD
-// ============================================
 
 function AlienRocks() {
   const { scene } = useGLTF('/models/rock_moss_set_01_1k.gltf');
 
-  const rock = useMemo(() => scene.clone(true), [scene]);
+  const rocks = useMemo(() => {
+    const meshes: THREE.Mesh[] = [];
 
-  const rockPositionY = useMemo(() => {
-    rock.updateMatrixWorld(true);
+    scene.updateMatrixWorld(true);
 
-    const bounds = new THREE.Box3().setFromObject(rock);
+    scene.traverse((child) => {
+      if (child instanceof THREE.Mesh) {
+        const rock = child.clone();
 
-    return -0.05 - bounds.min.y;
-  }, [rock]);
+        rock.geometry = child.geometry;
+        rock.material = Array.isArray(child.material)
+          ? child.material.map((material) => material.clone())
+          : child.material.clone();
+
+        rock.castShadow = true;
+        rock.receiveShadow = true;
+
+        meshes.push(rock);
+      }
+    });
+
+    return meshes;
+  }, [scene]);
+
+  const placements = useMemo(() => {
+    const positions = [
+      [-12, -8], [-7, -11], [0, -13], [8, -10], [13, -6],
+      [-15, 0], [-9, 2], [10, 1], [16, 4],
+      [-13, 10], [-6, 13], [3, 12], [12, 11],
+      [-20, -15], [20, -13], [-19, 14], [19, 17],
+    ];
+
+    return positions.map(([x, z], index) => ({
+      x,
+      z,
+      scale: 0.65 + (index % 4) * 0.18,
+      rotation: (index * 1.37) % (Math.PI * 2),
+    }));
+  }, []);
+
+  const preparedRocks = useMemo(() => {
+    return rocks.map((rock) => {
+      const clone = rock.clone();
+
+      clone.updateMatrixWorld(true);
+
+      const bounds = new THREE.Box3().setFromObject(clone);
+
+      return {
+        object: clone,
+        groundOffset: -0.05 - bounds.min.y,
+      };
+    });
+  }, [rocks]);
 
   return (
-    <group
-      position={[0, rockPositionY, 0]}
-      rotation={[0, 0, 0]}
-    >
-      <primitive object={rock} />
+    <group>
+      {placements.map((placement, index) => {
+        const rock = preparedRocks[index % preparedRocks.length];
+
+        return (
+          <group
+            key={index}
+            position={[
+              placement.x,
+              rock.groundOffset * placement.scale,
+              placement.z,
+            ]}
+            rotation={[0, placement.rotation, 0]}
+            scale={placement.scale}
+          >
+            <primitive object={rock.object.clone()} />
+          </group>
+        );
+      })}
     </group>
   );
 }
 
 useGLTF.preload('/models/rock_moss_set_01_1k.gltf');
+
 // ============================================
 // 11. CENÁRIO COMPLETO
 // ============================================
