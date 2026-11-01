@@ -719,6 +719,68 @@ function MeemuGalaxyModel() {
   );
 }
 // ============================================
+// CHÃO PBR — MEEMU WORLD
+// ============================================
+
+function TexturedGround() {
+  const [
+    colorMap,
+    aoMap,
+    normalMap,
+    roughnessMap,
+  ] = useTexture([
+    '/textures/brown_mud_leaves_01_diff_1k.jpg',
+    '/textures/brown_mud_leaves_01_ao_1k.jpg',
+    '/textures/brown_mud_leaves_01_nor_gl_1k.jpg',
+    '/textures/brown_mud_leaves_01_rough_1k.jpg',
+  ]);
+
+  const geometry = useMemo(() => {
+    const geo = new THREE.PlaneGeometry(300, 300, 1, 1);
+
+    geo.setAttribute('uv2', geo.attributes.uv);
+
+    return geo;
+  }, []);
+
+  const textures = [
+    colorMap,
+    aoMap,
+    normalMap,
+    roughnessMap,
+  ];
+
+  textures.forEach((texture) => {
+    texture.wrapS = THREE.RepeatWrapping;
+    texture.wrapT = THREE.RepeatWrapping;
+    texture.repeat.set(24, 24);
+    texture.anisotropy = 4;
+    texture.needsUpdate = true;
+  });
+
+  colorMap.colorSpace = THREE.SRGBColorSpace;
+
+  return (
+    <mesh
+      geometry={geometry}
+      rotation={[-Math.PI / 2, 0, 0]}
+      position={[0, -0.05, 0]}
+      receiveShadow
+    >
+      <meshStandardMaterial
+        map={colorMap}
+        aoMap={aoMap}
+        aoMapIntensity={1.2}
+        normalMap={normalMap}
+        normalScale={new THREE.Vector2(1.5, 1.5)}
+        roughnessMap={roughnessMap}
+        roughness={1}
+        metalness={0}
+      />
+    </mesh>
+  );
+}
+// ============================================
 // 8. CENÁRIO COMPLETO
 // ============================================
 
@@ -761,20 +823,7 @@ function SpaceScene({
       <CinematicSun />
       <Earth />
       <ThreeMoons />
-
-      <mesh
-        rotation={[-Math.PI / 2, 0, 0]}
-        position={[0, -0.05, 0]}
-      >
-        <planeGeometry args={[300, 300]} />
-
-        <meshStandardMaterial
-          color="#05070c"
-          roughness={0.95}
-          metalness={0.1}
-        />
-      </mesh>
-
+      <TexturedGround />
       <gridHelper
         args={[300, 100, '#075985', '#101c30']}
         position={[0, 0, 0]}
