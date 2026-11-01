@@ -910,16 +910,19 @@ function AlienRocks() {
   const { scene } = useGLTF('/textures/rocks.meemu.glb');
 
   return (
-    <primitive
-      object={scene.clone()}
-      position={[0, 0, 0]}
-      scale={1}
-    />
+    <group
+      position={[0, -0.45, 0]}
+      rotation={[0.18, 0.35, 0]}
+    >
+      <primitive
+        object={scene.clone()}
+        scale={1}
+      />
+    </group>
   );
 }
 
 useGLTF.preload('/textures/rocks.meemu.glb');
-
 // ============================================
 // 11. CENÁRIO COMPLETO
 // ============================================
