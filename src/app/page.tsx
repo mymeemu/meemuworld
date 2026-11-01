@@ -919,7 +919,7 @@ function SpaceScene({
       <Earth />
       <ThreeMoons />
       <TexturedGround />
-     
+      <AlienRocks />
 
       <PlayerAvatar
         isCustomizing={isCustomizing}
