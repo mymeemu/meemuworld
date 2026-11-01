@@ -700,7 +700,7 @@ function MeemuPlanetModel() {
   return (
     <NormalizedGLB
       url="/models/planet.meemuworld.glb"
-      position={[65, -8, -190]}
+      position={[-260, 15, -180]}
       targetSize={42}
       rotation={[0.15, 0.35, 0]}
     />
