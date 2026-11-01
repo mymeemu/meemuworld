@@ -834,7 +834,6 @@ function TexturedGround() {
     </mesh>
   );
 }
-
 // ============================================
 // 10. ROCHAS 3D — MEEMU WORLD
 // ============================================
@@ -849,7 +848,7 @@ function AlienRocks() {
 
     const bounds = new THREE.Box3().setFromObject(rock);
 
-    return -0.45 - bounds.min.y;
+    return -0.05 - bounds.min.y;
   }, [rock]);
 
   return (
@@ -863,7 +862,6 @@ function AlienRocks() {
 }
 
 useGLTF.preload('/models/rock_moss_set_01_1k.gltf');
-   
 // ============================================
 // 11. CENÁRIO COMPLETO
 // ============================================
@@ -901,50 +899,53 @@ function SpaceScene({
       />
 
       <Suspense fallback={null}>
-      <MilkyWayBackground />
+        <MilkyWayBackground />
 
-{/* <MeemuPlanetModel /> */}
+        {/* Planetas e modelos ainda não implementados */}
+        {/* <MeemuPlanetModel /> */}
+        {/* <MeemuGalaxyModel /> */}
 
-{/* <MeemuGalaxyModel /> */}
+        <TexturedGround />
 
-<TexturedGround />
+        <AlienRocks />
 
-<AlienRocks />
+        {/* <Saturn /> */}
 
-{/* <Saturn /> */}
-      <Sparkles
-        count={180}
-        scale={[450, 280, 550]}
-        position={[0, 45, -180]}
-        size={2}
-        speed={0.12}
-        color="#b9ddff"
-      />
+        <Sparkles
+          count={180}
+          scale={[450, 280, 550]}
+          position={[0, 45, -180]}
+          size={2}
+          speed={0.12}
+          color="#b9ddff"
+        />
 
-      <CinematicSun />
-      <Earth />
-      <ThreeMoons />
+        <CinematicSun />
 
-      <PlayerAvatar
-        isCustomizing={isCustomizing}
-        controlsRef={controlsRef}
-      />
+        <Earth />
 
-      <OrbitControls
-        ref={controlsRef}
-        enableDamping
-        dampingFactor={0.06}
-        enableZoom
-        enablePan={false}
-        minDistance={3}
-        maxDistance={100}
-        maxPolarAngle={Math.PI / 2}
-        target={[0, 1, 0]}
-      />
+        <ThreeMoons />
+
+        <PlayerAvatar
+          isCustomizing={isCustomizing}
+          controlsRef={controlsRef}
+        />
+
+        <OrbitControls
+          ref={controlsRef}
+          enableDamping
+          dampingFactor={0.06}
+          enableZoom
+          enablePan={false}
+          minDistance={3}
+          maxDistance={100}
+          maxPolarAngle={Math.PI / 2}
+          target={[0, 1, 0]}
+        />
+      </Suspense>
     </>
   );
 }
-
 // ============================================
 // 12. PÁGINA PRINCIPAL
 // ============================================
