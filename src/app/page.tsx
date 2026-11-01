@@ -864,7 +864,143 @@ function AlienRocks() {
     </group>
   );
 }
+// ============================================
+// PLANETA ALIENÍGENA COM ANÉIS — MEEMU WORLD
+// ============================================
 
+function AlienRingedPlanet() {
+  const planetRef = useRef<THREE.Mesh>(null);
+  const ringRef = useRef<THREE.Group>(null);
+
+  const geometry = useMemo(() => {
+    const geo = new THREE.SphereGeometry(72, 128, 128);
+    const positions = geo.attributes.position;
+    const colors: number[] = [];
+
+    const dark = new THREE.Color("#102c3c");
+    const blue = new THREE.Color("#167b91");
+    const purple = new THREE.Color("#7652a8");
+
+    for (let i = 0; i < positions.count; i++) {
+      const x = positions.getX(i);
+      const y = positions.getY(i);
+      const z = positions.getZ(i);
+
+      const noise =
+        Math.sin(x * 0.12 + y * 0.08) *
+        Math.cos(z * 0.11 - y * 0.06);
+
+      const detail =
+        Math.sin(x * 0.32 + z * 0.24) *
+        Math.cos(y * 0.28);
+
+      const displacement = noise * 1.5 + detail * 0.5;
+
+      const length = Math.sqrt(x * x + y * y + z * z);
+      const factor = (72 + displacement) / length;
+
+      positions.setXYZ(i, x * factor, y * factor, z * factor);
+
+      const color = noise > 0.25
+        ? purple.clone()
+        : noise < -0.2
+          ? dark.clone()
+          : blue.clone();
+
+      color.multiplyScalar(0.85 + Math.abs(detail) * 0.5);
+
+      colors.push(color.r, color.g, color.b);
+    }
+
+    geo.setAttribute(
+      "color",
+      new THREE.Float32BufferAttribute(colors, 3)
+    );
+
+    geo.computeVertexNormals();
+
+    return geo;
+  }, []);
+
+  useFrame((_, delta) => {
+    if (planetRef.current) {
+      planetRef.current.rotation.y += delta * 0.025;
+    }
+
+    if (ringRef.current) {
+      ringRef.current.rotation.z += delta * 0.008;
+    }
+  });
+
+  return (
+    <group position={[-220, 85, -470]}>
+
+      {/* PLANETA */}
+      <mesh
+        ref={planetRef}
+        geometry={geometry}
+      >
+        <meshStandardMaterial
+          vertexColors
+          roughness={0.82}
+          metalness={0.18}
+        />
+      </mesh>
+
+      {/* ATMOSFERA */}
+      <mesh scale={1.055}>
+        <sphereGeometry args={[72, 64, 64]} />
+        <meshBasicMaterial
+          color="#39c9ff"
+          transparent
+          opacity={0.12}
+          side={THREE.BackSide}
+        />
+      </mesh>
+
+      {/* ANÉIS */}
+      <group
+        ref={ringRef}
+        rotation={[1.12, 0.15, -0.2]}
+      >
+        <mesh>
+          <ringGeometry args={[105, 145, 160]} />
+          <meshStandardMaterial
+            color="#8465c9"
+            side={THREE.DoubleSide}
+            transparent
+            opacity={0.78}
+            roughness={0.65}
+            metalness={0.35}
+          />
+        </mesh>
+
+        <mesh position={[0, 0, 0.4]}>
+          <ringGeometry args={[88, 103, 160]} />
+          <meshStandardMaterial
+            color="#38c5d8"
+            side={THREE.DoubleSide}
+            transparent
+            opacity={0.65}
+            roughness={0.5}
+            metalness={0.4}
+          />
+        </mesh>
+
+        <mesh position={[0, 0, -0.4]}>
+          <ringGeometry args={[146, 151, 160]} />
+          <meshBasicMaterial
+            color="#b99aff"
+            side={THREE.DoubleSide}
+            transparent
+            opacity={0.7}
+          />
+        </mesh>
+      </group>
+
+    </group>
+  );
+}
 // ============================================
 // 8. CENÁRIO COMPLETO
 // ============================================
@@ -902,10 +1038,10 @@ function SpaceScene({
       <MilkyWayBackground />
 
       <Suspense fallback={null}>
-        <MeemuPlanetModel />
-        {/* <MeemuGalaxyModel /> */}
+      <MeemuPlanetModel />
+      <MeemuGalaxyModel />
       </Suspense>
-
+      <AlienRingedPlanet />
       <Sparkles
         count={180}
         scale={[450, 280, 550]}
