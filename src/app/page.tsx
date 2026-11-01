@@ -860,32 +860,23 @@ function TexturedGround() {
     normalMap,
     roughnessMap,
   ] = useTexture([
-    '/textures/brown_mud_leaves_01_diff_1k.jpg',
-    '/textures/brown_mud_leaves_01_ao_1k.jpg',
-    '/textures/brown_mud_leaves_01_nor_gl_1k.jpg',
-    '/textures/brown_mud_leaves_01_rough_1k.jpg',
+    '/textures/rocks/brown_mud_leaves_01_diff_1k.jpg',
+    '/textures/rocks/brown_mud_leaves_01_ao_1k.jpg',
+    '/textures/rocks/brown_mud_leaves_01_nor_gl_1k.jpg',
+    '/textures/rocks/brown_mud_leaves_01_rough_1k.jpg',
   ]);
 
   const geometry = useMemo(() => {
     const geo = new THREE.PlaneGeometry(300, 300, 1, 1);
-
     geo.setAttribute('uv2', geo.attributes.uv);
-
     return geo;
   }, []);
 
-  const textures = [
-    colorMap,
-    aoMap,
-    normalMap,
-    roughnessMap,
-  ];
-
-  textures.forEach((texture) => {
+  [colorMap, aoMap, normalMap, roughnessMap].forEach((texture) => {
     texture.wrapS = THREE.RepeatWrapping;
     texture.wrapT = THREE.RepeatWrapping;
     texture.repeat.set(24, 24);
-    texture.anisotropy = 4;
+    texture.anisotropy = 8;
     texture.needsUpdate = true;
   });
 
@@ -911,7 +902,6 @@ function TexturedGround() {
     </mesh>
   );
 }
-
 // ============================================
 // 10. ROCHAS — MEEMU WORLD
 // ============================================
