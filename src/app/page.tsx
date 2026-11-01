@@ -273,41 +273,161 @@ function Atmosphere({
 }
 
 // ============================================
-// 3. TERRA ESTÁTICA
+// 3. PLANETA MEZUS N1 VZERO
 // ============================================
 
 function Earth() {
-  const [earthTexture] = useTexture([
-    '/8k_earth_daymap.jpg',
-  ]);
-
-  earthTexture.colorSpace = THREE.SRGBColorSpace;
-
   return (
     <group
-      position={[-50, 30, -120]}
-      rotation={[0.2, 0.4, -0.1]}
+      position={[-85, 38, -230]}
+      rotation={[0.2, 0.5, -0.1]}
     >
-
-      {/* Atmosfera azul */}
-
-      <Atmosphere
-        radius={1.09}
-        color="#3b9dff"
-      />
-
-      {/* Superfície estática */}
-
+      {/* Atmosfera avermelhada */}
       <mesh>
-        <sphereGeometry args={[35, 48, 48]} />
-
-        <meshStandardMaterial
-          map={earthTexture}
-          roughness={0.8}
-          metalness={0}
+        <sphereGeometry args={[25.2, 64, 64]} />
+        <meshBasicMaterial
+          color="#a83225"
+          transparent
+          opacity={0.13}
+          side={THREE.BackSide}
+          blending={THREE.AdditiveBlending}
+          depthWrite={false}
         />
       </mesh>
 
+      {/* Planeta alienígena */}
+      <mesh>
+        <sphereGeometry args={[24, 96, 96]} />
+
+        <shaderMaterial
+          uniforms={{}}
+          vertexShader={`
+            varying vec3 vNormal;
+            varying vec3 vPosition;
+
+            void main() {
+              vNormal = normalize(normalMatrix * normal);
+              vPosition = position;
+
+              gl_Position =
+                projectionMatrix *
+                modelViewMatrix *
+                vec4(position, 1.0);
+            }
+          `}
+          fragmentShader={`
+            varying vec3 vNormal;
+            varying vec3 vPosition;
+
+            float hash(vec3 p) {
+              p = fract(p * 0.3183099 + 0.1);
+              p *= 17.0;
+              return fract(p.x * p.y * p.z * (p.x + p.y + p.z));
+            }
+
+            float noise(vec3 p) {
+              vec3 i = floor(p);
+              vec3 f = fract(p);
+
+              f = f * f * (3.0 - 2.0 * f);
+
+              return mix(
+                mix(
+                  mix(hash(i), hash(i + vec3(1,0,0)), f.x),
+                  mix(hash(i + vec3(0,1,0)), hash(i + vec3(1,1,0)), f.x),
+                  f.y
+                ),
+                mix(
+                  mix(hash(i + vec3(0,0,1)), hash(i + vec3(1,0,1)), f.x),
+                  mix(hash(i + vec3(0,1,1)), hash(i + vec3(1,1,1)), f.x),
+                  f.y
+                ),
+                f.z
+              );
+            }
+
+            float fbm(vec3 p) {
+              float value = 0.0;
+              float amplitude = 0.5;
+
+              for (int i = 0; i < 5; i++) {
+                value += noise(p) * amplitude;
+                p *= 2.0;
+                amplitude *= 0.5;
+              }
+
+              return value;
+            }
+
+            void main() {
+              vec3 p = normalize(vPosition);
+
+              // Relevo rochoso
+              float terrain = fbm(p * 13.0);
+              float detail = fbm(p * 42.0);
+
+              float rock = terrain * 0.75 + detail * 0.25;
+
+              vec3 darkRock = vec3(0.12, 0.025, 0.018);
+              vec3 redRock = vec3(0.42, 0.075, 0.035);
+              vec3 brightRock = vec3(0.72, 0.22, 0.10);
+
+              vec3 surface = mix(
+                darkRock,
+                redRock,
+                smoothstep(0.25, 0.65, rock)
+              );
+
+              surface = mix(
+                surface,
+                brightRock,
+                smoothstep(0.68, 0.86, rock)
+              );
+
+              // Nuvens densas e irregulares
+              float clouds = fbm(p * 8.0 + vec3(2.0, 4.0, 1.0));
+              clouds += fbm(p * 17.0) * 0.25;
+
+              float cloudMask = smoothstep(
+                0.53,
+                0.69,
+                clouds
+              );
+
+              vec3 cloudColor = vec3(0.82, 0.38, 0.27);
+
+              surface = mix(
+                surface,
+                cloudColor,
+                cloudMask * 0.78
+              );
+
+              // Iluminação espacial
+              vec3 normal = normalize(vNormal);
+              vec3 lightDir = normalize(vec3(-0.4, 0.5, 1.0));
+
+              float light = max(dot(normal, lightDir), 0.0);
+
+              float ambient = 0.10;
+              float lighting = ambient + light * 0.95;
+
+              // Brilho atmosférico nas bordas
+              float rim = 1.0 - max(
+                dot(normal, vec3(0.0, 0.0, 1.0)),
+                0.0
+              );
+
+              vec3 atmosphere = vec3(0.65, 0.12, 0.07);
+
+              vec3 finalColor =
+                surface * lighting +
+                atmosphere * pow(rim, 3.0) * 0.32;
+
+              gl_FragColor = vec4(finalColor, 1.0);
+            }
+          `}
+        />
+      </mesh>
     </group>
   );
 }
