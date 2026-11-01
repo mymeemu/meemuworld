@@ -7,53 +7,36 @@ import {
   OrbitControls,
   useTexture,
   Sparkles,
+  Billboard,
 } from '@react-three/drei';
-
-import {
-  EffectComposer,
-  Bloom,
-  Vignette,
-} from '@react-three/postprocessing';
 
 import * as THREE from 'three';
 
+// ============================================
+// 1. SOL CINEMATOGRÁFICO OTIMIZADO
+// ============================================
 
 function CinematicSun() {
-  const sunRef = useRef<THREE.Mesh>(null!);
-  const plasmaRef = useRef<THREE.Group>(null!);
+  const coronaRef = useRef<THREE.ShaderMaterial>(null!);
 
   const [sunTexture] = useTexture(['/8k_sun.jpg']);
 
   sunTexture.colorSpace = THREE.SRGBColorSpace;
 
-  useFrame((state, delta) => {
-    if (sunRef.current) {
-      sunRef.current.rotation.y += delta * 0.006;
-    }
-
-    if (plasmaRef.current) {
-      plasmaRef.current.rotation.y += delta * 0.012;
-      plasmaRef.current.rotation.z =
-        Math.sin(state.clock.elapsedTime * 0.2) * 0.04;
+  useFrame((state) => {
+    if (coronaRef.current) {
+      coronaRef.current.uniforms.uTime.value =
+        state.clock.elapsedTime;
     }
   });
 
   return (
     <group position={[120, 40, -160]}>
 
-      {/* Luz solar */}
+      {/* Superfície solar */}
 
-      <pointLight
-        color="#fff0ce"
-        intensity={1800}
-        distance={1000}
-        decay={1.5}
-      />
-
-      {/* Superfície do Sol */}
-
-      <mesh ref={sunRef}>
-        <sphereGeometry args={[14, 96, 96]} />
+      <mesh>
+        <sphereGeometry args={[14, 48, 48]} />
 
         <meshBasicMaterial
           map={sunTexture}
@@ -61,69 +44,163 @@ function CinematicSun() {
         />
       </mesh>
 
-      {/* Plasma externo */}
+      {/* Corona solar procedural */}
 
-      <group ref={plasmaRef}>
+      <Billboard>
 
-        <mesh scale={1.025}>
-          <sphereGeometry args={[14, 64, 64]} />
+        <mesh position={[0, 0, -0.2]}>
 
-          <meshBasicMaterial
-            color="#fff5dc"
+          <planeGeometry args={[100, 100]} />
+
+          <shaderMaterial
+            ref={coronaRef}
             transparent
-            opacity={0.28}
-            blending={THREE.AdditiveBlending}
-            side={THREE.BackSide}
             depthWrite={false}
+            depthTest={true}
+            side={THREE.DoubleSide}
+            blending={THREE.AdditiveBlending}
             toneMapped={false}
+            uniforms={{
+              uTime: { value: 0 },
+            }}
+
+            vertexShader={`
+              varying vec2 vUv;
+
+              void main() {
+                vUv = uv;
+
+                gl_Position =
+                  projectionMatrix *
+                  modelViewMatrix *
+                  vec4(position, 1.0);
+              }
+            `}
+
+            fragmentShader={`
+              uniform float uTime;
+
+              varying vec2 vUv;
+
+              float hash(vec2 p) {
+                return fract(
+                  sin(dot(p, vec2(127.1, 311.7))) *
+                  43758.5453
+                );
+              }
+
+              float noise(vec2 p) {
+                vec2 i = floor(p);
+                vec2 f = fract(p);
+
+                f = f * f * (3.0 - 2.0 * f);
+
+                return mix(
+                  mix(
+                    hash(i),
+                    hash(i + vec2(1.0, 0.0)),
+                    f.x
+                  ),
+                  mix(
+                    hash(i + vec2(0.0, 1.0)),
+                    hash(i + vec2(1.0, 1.0)),
+                    f.x
+                  ),
+                  f.y
+                );
+              }
+
+              float fbm(vec2 p) {
+                float value = 0.0;
+                float amplitude = 0.5;
+
+                for (int i = 0; i < 3; i++) {
+                  value += noise(p) * amplitude;
+                  p *= 2.0;
+                  amplitude *= 0.5;
+                }
+
+                return value;
+              }
+
+              void main() {
+
+                vec2 p = (vUv - 0.5) * 2.0;
+
+                float radius = length(p);
+
+                float plasma = fbm(
+                  p * 4.0 +
+                  vec2(
+                    uTime * 0.035,
+                    -uTime * 0.025
+                  )
+                );
+
+                float distortion =
+                  (plasma - 0.5) * 0.12;
+
+                float coronaRadius =
+                  radius - distortion;
+
+                // Brilho central difuso
+
+                float innerGlow =
+                  exp(-radius * 5.0) * 0.20;
+
+                // Halo externo suave
+
+                float outerGlow =
+                  exp(-radius * 2.3) * 0.25;
+
+                // Estrutura irregular do plasma
+
+                float plasmaRing =
+                  exp(
+                    -pow(
+                      (coronaRadius - 0.38) * 7.0,
+                      2.0
+                    )
+                  ) * (0.07 + plasma * 0.08);
+
+                // Desaparecimento suave nas bordas
+
+                float edgeFade =
+                  1.0 - smoothstep(0.72, 1.0, radius);
+
+                float alpha = (
+                  innerGlow +
+                  outerGlow +
+                  plasmaRing
+                ) * edgeFade;
+
+                // Cores solares
+
+                vec3 coreColor =
+                  vec3(1.0, 0.91, 0.70);
+
+                vec3 coronaColor =
+                  vec3(1.0, 0.35, 0.09);
+
+                vec3 color = mix(
+                  coreColor,
+                  coronaColor,
+                  smoothstep(0.15, 0.9, radius)
+                );
+
+                color *= 0.9 + plasma * 0.35;
+
+                gl_FragColor = vec4(
+                  color,
+                  clamp(alpha, 0.0, 0.65)
+                );
+              }
+            `}
           />
+
         </mesh>
 
-        <mesh scale={1.12}>
-          <sphereGeometry args={[14, 64, 64]} />
-
-          <meshBasicMaterial
-            color="#ffb347"
-            transparent
-            opacity={0.16}
-            blending={THREE.AdditiveBlending}
-            side={THREE.BackSide}
-            depthWrite={false}
-            toneMapped={false}
-          />
-        </mesh>
-
-        <mesh scale={1.3}>
-          <sphereGeometry args={[14, 64, 64]} />
-
-          <meshBasicMaterial
-            color="#ff741c"
-            transparent
-            opacity={0.09}
-            blending={THREE.AdditiveBlending}
-            side={THREE.BackSide}
-            depthWrite={false}
-            toneMapped={false}
-          />
-        </mesh>
-
-      </group>
-
-      {/* Halo luminoso */}
-
-      <mesh scale={1.65}>
-        <sphereGeometry args={[14, 48, 48]} />
-
-        <meshBasicMaterial
-          color="#ff9d42"
-          transparent
-          opacity={0.055}
-          blending={THREE.AdditiveBlending}
-          side={THREE.BackSide}
-          depthWrite={false}
-          toneMapped={false}
-        />
-      </mesh>
+      </Billboard>
 
     </group>
   );
@@ -142,7 +219,8 @@ function Atmosphere({
 }) {
   return (
     <mesh scale={radius}>
-      <sphereGeometry args={[1, 48, 48]} />
+
+      <sphereGeometry args={[1, 40, 40]} />
 
       <shaderMaterial
         transparent
@@ -150,24 +228,29 @@ function Atmosphere({
         blending={THREE.AdditiveBlending}
         side={THREE.BackSide}
         toneMapped={false}
+
         uniforms={{
           uColor: {
             value: new THREE.Color(color),
           },
         }}
+
         vertexShader={`
           varying vec3 vNormal;
           varying vec3 vViewPosition;
 
           void main() {
-            vec4 mvPosition = modelViewMatrix * vec4(position, 1.0);
+            vec4 mvPosition =
+              modelViewMatrix * vec4(position, 1.0);
 
             vNormal = normalize(normalMatrix * normal);
             vViewPosition = -mvPosition.xyz;
 
-            gl_Position = projectionMatrix * mvPosition;
+            gl_Position =
+              projectionMatrix * mvPosition;
           }
         `}
+
         fragmentShader={`
           uniform vec3 uColor;
 
@@ -178,50 +261,52 @@ function Atmosphere({
             vec3 viewDir = normalize(vViewPosition);
 
             float fresnel = pow(
-              1.0 - max(dot(normalize(vNormal), viewDir), 0.0),
+              1.0 - max(
+                dot(normalize(vNormal), viewDir),
+                0.0
+              ),
               3.0
             );
 
-            float alpha = fresnel * 0.75;
+            float alpha = fresnel * 0.65;
 
             gl_FragColor = vec4(uColor, alpha);
           }
         `}
       />
+
     </mesh>
   );
 }
 
 // ============================================
-// 3. TERRA
+// 3. TERRA ESTÁTICA
 // ============================================
 
 function Earth() {
-  const planetRef = useRef<THREE.Mesh>(null!);
-
   const [earthTexture] = useTexture([
     '/8k_earth_daymap.jpg',
   ]);
 
   earthTexture.colorSpace = THREE.SRGBColorSpace;
 
- return (
+  return (
     <group
       position={[-50, 30, -120]}
       rotation={[0.2, 0.4, -0.1]}
     >
 
-      {/* Atmosfera */}
+      {/* Atmosfera azul */}
 
       <Atmosphere
         radius={1.09}
         color="#3b9dff"
       />
 
-      {/* Superfície */}
+      {/* Superfície estática */}
 
-      <mesh ref={planetRef}>
-        <sphereGeometry args={[35, 64, 64]} />
+      <mesh>
+        <sphereGeometry args={[35, 48, 48]} />
 
         <meshStandardMaterial
           map={earthTexture}
@@ -235,7 +320,7 @@ function Earth() {
 }
 
 // ============================================
-// 4. PLANETA COM ANÉIS
+// 4. SATURNO
 // ============================================
 
 function Saturn() {
@@ -267,10 +352,10 @@ function Saturn() {
         color="#ffb86b"
       />
 
-      {/* Corpo do planeta */}
+      {/* Corpo */}
 
       <mesh ref={planetRef}>
-        <sphereGeometry args={[19, 48, 48]} />
+        <sphereGeometry args={[19, 40, 40]} />
 
         <meshStandardMaterial
           color="#c99565"
@@ -285,7 +370,7 @@ function Saturn() {
         ref={ringRef}
         rotation={[Math.PI / 2.3, 0, 0]}
       >
-        <ringGeometry args={[25, 43, 96]} />
+        <ringGeometry args={[25, 43, 64]} />
 
         <meshStandardMaterial
           map={ringTexture}
@@ -316,13 +401,15 @@ function MilkyWayBackground() {
 
   return (
     <mesh>
-      <sphereGeometry args={[500, 48, 48]} />
+
+      <sphereGeometry args={[500, 32, 32]} />
 
       <meshBasicMaterial
         map={bgTexture}
         side={THREE.BackSide}
         toneMapped={false}
       />
+
     </mesh>
   );
 }
@@ -340,15 +427,17 @@ function PlayerAvatar({
 
   useFrame((state, delta) => {
     if (avatarRef.current) {
+
       if (isCustomizing) {
         avatarRef.current.rotation.y += delta * 0.3;
       } else {
-        avatarRef.current.rotation.y = THREE.MathUtils.damp(
-          avatarRef.current.rotation.y,
-          0,
-          4,
-          delta
-        );
+        avatarRef.current.rotation.y =
+          THREE.MathUtils.damp(
+            avatarRef.current.rotation.y,
+            0,
+            4,
+            delta
+          );
       }
 
       avatarRef.current.position.y =
@@ -362,6 +451,7 @@ function PlayerAvatar({
       {/* Corpo */}
 
       <mesh position={[0, 0.85, 0]}>
+
         <capsuleGeometry args={[0.4, 1.1, 4, 16]} />
 
         <meshStandardMaterial
@@ -369,25 +459,29 @@ function PlayerAvatar({
           roughness={0.3}
           metalness={0.65}
         />
+
       </mesh>
 
       {/* Capacete */}
 
       <mesh position={[0, 1.65, 0.08]}>
-        <sphereGeometry args={[0.28, 32, 32]} />
+
+        <sphereGeometry args={[0.28, 24, 24]} />
 
         <meshStandardMaterial
           color="#111827"
           roughness={0.15}
           metalness={0.9}
         />
+
       </mesh>
 
       {/* Visor */}
 
       <mesh position={[0, 1.67, 0.29]}>
+
         <sphereGeometry
-          args={[0.17, 32, 32, 0, Math.PI * 2, 0, Math.PI / 2]}
+          args={[0.17, 24, 24, 0, Math.PI * 2, 0, Math.PI / 2]}
         />
 
         <meshBasicMaterial
@@ -396,6 +490,7 @@ function PlayerAvatar({
           opacity={0.85}
           toneMapped={false}
         />
+
       </mesh>
 
     </group>
@@ -414,7 +509,7 @@ function SpaceScene({
   return (
     <>
 
-      {/* Iluminação solar global */}
+      {/* Iluminação solar */}
 
       <directionalLight
         position={[120, 40, -160]}
@@ -436,7 +531,7 @@ function SpaceScene({
       <MilkyWayBackground />
 
       <Sparkles
-        count={90}
+        count={55}
         scale={250}
         size={2}
         speed={0.15}
@@ -457,6 +552,7 @@ function SpaceScene({
         rotation={[-Math.PI / 2, 0, 0]}
         position={[0, -0.05, 0]}
       >
+
         <planeGeometry args={[300, 300]} />
 
         <meshStandardMaterial
@@ -464,6 +560,7 @@ function SpaceScene({
           roughness={0.95}
           metalness={0.1}
         />
+
       </mesh>
 
       <gridHelper
@@ -471,9 +568,11 @@ function SpaceScene({
         position={[0, 0, 0]}
       />
 
-      {/* Personagem */}
+      {/* Avatar */}
 
-      <PlayerAvatar isCustomizing={isCustomizing} />
+      <PlayerAvatar
+        isCustomizing={isCustomizing}
+      />
 
       {/* Câmera */}
 
@@ -487,24 +586,6 @@ function SpaceScene({
         maxPolarAngle={Math.PI / 2}
         target={[0, 1, 0]}
       />
-
-      {/* Pós-processamento cinematográfico */}
-
-      <EffectComposer multisampling={0}>
-
-        <Bloom
-          intensity={1.5}
-          luminanceThreshold={0.25}
-          luminanceSmoothing={0.65}
-          mipmapBlur
-        />
-
-        <Vignette
-          offset={0.2}
-          darkness={0.45}
-        />
-
-      </EffectComposer>
 
     </>
   );
@@ -579,7 +660,7 @@ export default function GamePage() {
 
       <Canvas
         shadows={false}
-        dpr={[1, 1.5]}
+        dpr={[1, 1.25]}
         camera={{
           position: [0, 2.2, 9],
           fov: 60,
@@ -587,7 +668,7 @@ export default function GamePage() {
           far: 1200,
         }}
         gl={{
-          antialias: true,
+          antialias: false,
           powerPreference: 'high-performance',
           alpha: false,
         }}
