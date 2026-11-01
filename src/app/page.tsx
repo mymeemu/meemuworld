@@ -596,6 +596,7 @@ function MilkyWayBackground() {
     </mesh>
   );
 }
+
 function FirstPersonArms() {
   const { camera } = useThree();
 
@@ -603,38 +604,71 @@ function FirstPersonArms() {
     '/models/avatar/first_person_arms.glb'
   );
 
-  const arms = useMemo(() => clone(scene), [scene]);
+  const arms = useMemo(() => {
+    const model = clone(scene);
+    const group = new THREE.Group();
 
-  useEffect(() => {
-    const bounds = new THREE.Box3().setFromObject(arms);
+    const bounds = new THREE.Box3().setFromObject(model);
     const center = bounds.getCenter(new THREE.Vector3());
 
     const scale = 0.015;
 
-    arms.scale.setScalar(scale);
-
-    arms.position.set(
+    model.scale.setScalar(scale);
+    model.position.set(
       -center.x * scale,
-      -0.28 - center.y * scale,
-      -0.75 - center.z * scale
+      -center.y * scale,
+      -center.z * scale
     );
 
-    arms.traverse((child) => {
+    model.traverse((child) => {
       if (child instanceof THREE.Mesh) {
         child.frustumCulled = false;
-        child.renderOrder = 1000;
+        child.renderOrder = 9999;
+
+        const materials = Array.isArray(child.material)
+          ? child.material
+          : [child.material];
+
+        materials.forEach((material) => {
+          material = material.clone();
+          material.visible = true;
+          material.transparent = false;
+          material.opacity = 1;
+          material.depthTest = false;
+          material.depthWrite = false;
+          material.side = THREE.DoubleSide;
+          material.needsUpdate = true;
+        });
+
+        child.material = Array.isArray(child.material)
+          ? materials.map((material) => material.clone())
+          : materials[0];
       }
     });
 
-    camera.add(arms);
+    group.add(model);
+    return group;
+  }, [scene]);
 
-    return () => {
-      camera.remove(arms);
-    };
-  }, [camera, arms]);
+  useFrame(() => {
+    camera.updateMatrixWorld();
 
-  return null;
+    const position = new THREE.Vector3();
+    const quaternion = new THREE.Quaternion();
+
+    camera.getWorldPosition(position);
+    camera.getWorldQuaternion(quaternion);
+
+    const offset = new THREE.Vector3(0, -0.30, -0.70);
+    offset.applyQuaternion(quaternion);
+
+    arms.position.copy(position).add(offset);
+    arms.quaternion.copy(quaternion);
+  });
+
+  return <primitive object={arms} />;
 }
+
 useGLTF.preload('/models/avatar/first_person_arms.glb');
 
 
