@@ -863,23 +863,7 @@ function AlienRocks() {
 }
 
 useGLTF.preload('/models/rock_moss_set_01_1k.gltf');
-
-      {/* Núcleo sólido interno */}
-      <mesh
-        position={rockData.center}
-        scale={rockData.coreScale}
-        castShadow
-        receiveShadow
-      >
-        <dodecahedronGeometry args={[1, 3]} />
-        <meshStandardMaterial
-          color="#55534f"
-          roughness={1}
-          metalness={0}
-        />
-      </mesh>
-
-  
+   
 // ============================================
 // 11. CENÁRIO COMPLETO
 // ============================================
